@@ -1,1 +1,15 @@
+.DS_Store
+
+# idea
+*.iml
+.idea
+.idea/*
+
+# go
+vendor
 .bin
+
+# vscode
+__debug_bin
+.vscode
+
