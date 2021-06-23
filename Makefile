@@ -18,7 +18,7 @@ proto: $(PROTO_GO_FILES)
 
 $(PROTO_GO_FILES): install-plugins $(PROTO_FILES)
 	for name in $(PROTO_FILES); do \
-		$(PROTOC) -Iproto --plugin=.bin/protoc-gen-go --plugin=.bin/protoc-gen-go-grpc --go_out=stargate/proto --go_opt=paths=source_relative --go-grpc_out=stargate/proto --go-grpc_opt=paths=source_relative $${name}; \
+		$(PROTOC) -Iproto --plugin=.bin/protoc-gen-go --plugin=.bin/protoc-gen-go-grpc --go_out=stargate/pkg/proto --go_opt=paths=source_relative --go-grpc_out=stargate/pkg/proto --go-grpc_opt=paths=source_relative $${name}; \
 	done
 
 clean:
