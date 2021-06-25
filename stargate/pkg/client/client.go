@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -18,8 +19,9 @@ import (
 )
 
 type StargateClient struct {
-	client pb.StargateClient
-	conn   *grpc.ClientConn
+	client       pb.StargateClient
+	conn         *grpc.ClientConn
+	authProvider auth.AuthProviderIFace
 }
 
 type Parameters struct {
@@ -34,7 +36,7 @@ type Parameters struct {
 	NowInSeconds      int32
 }
 
-func NewStargateClient(target string) (*StargateClient, error) {
+func NewStargateClient(target string, authProvider auth.AuthProviderIFace) (*StargateClient, error) {
 	conn, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.WithError(err).Error("Failed to create client")
@@ -44,8 +46,9 @@ func NewStargateClient(target string) (*StargateClient, error) {
 	client := pb.NewStargateClient(conn)
 
 	return &StargateClient{
-		client: client,
-		conn:   conn,
+		client:       client,
+		conn:         conn,
+		authProvider: authProvider,
 	}, nil
 }
 
@@ -54,6 +57,8 @@ type Query struct {
 	Values     interface{}
 	Parameters Parameters
 }
+
+type Batch struct{}
 
 func NewQuery() *Query {
 	return &Query{
@@ -64,12 +69,12 @@ func NewQuery() *Query {
 	}
 }
 
-func (s *StargateClient) ExecuteQuery(query *Query) (*ResultSet, error) {
+func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 	// TODO: [doug] configurable timeout?
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second+10)
 	defer cancel()
 
-	md := metadata.New(map[string]string{"x-cassandra-token": auth.GetToken()})
+	md := metadata.New(map[string]string{"x-cassandra-token": s.authProvider.GetToken()})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	in := &pb.Query{
@@ -82,6 +87,17 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*ResultSet, error) {
 	if err != nil {
 		log.WithError(err).Error("Failed to execute query")
 		return nil, fmt.Errorf("failed to execute query: %v", err)
+	}
+
+	response := &Response{
+		TracingId: resp.TracingId,
+		Warnings:  resp.Warnings,
+	}
+
+	if resp.ResultSet == nil {
+		// Valid for not all requests to have a ResultSet (e.g. schema changes). Since we've made it this far the request
+		// was successful so just return warnings and tracing info
+		return response, nil
 	}
 
 	data := resp.ResultSet.Data
@@ -106,7 +122,12 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*ResultSet, error) {
 		result.Columns = append(result.Columns, columnSpecFromProto(col))
 	}
 
-	return &result, nil
+	response.ResultSet = &result
+	return response, nil
+}
+
+func (s *StargateClient) ExecuteBatch(batch *Batch) (*Response, error) {
+	return nil, errors.New("not yet implemented")
 }
 
 func columnSpecFromProto(col *pb.ColumnSpec) *ColumnSpec {
@@ -117,6 +138,7 @@ func columnSpecFromProto(col *pb.ColumnSpec) *ColumnSpec {
 }
 
 func buildPayload(values interface{}) *pb.Payload {
+	// TODO: [doug] implement this
 	return &pb.Payload{
 		Type: 0,
 		Data: nil,

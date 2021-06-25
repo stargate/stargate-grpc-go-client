@@ -10,7 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: [doug] either change create an AuthProvider interface that this implements or use a client-side interceptor
+type TableBasedTokenProvider struct {
+	client *client
+}
+
 type client struct {
 	serviceURL string
 	httpClient *http.Client
@@ -25,7 +28,13 @@ type AuthReq struct {
 	Password string `json:"password"`
 }
 
-func GetToken() string {
+func NewTableBasedTokenProvider() TableBasedTokenProvider {
+	return TableBasedTokenProvider{
+		client: getClient(),
+	}
+}
+
+func (t TableBasedTokenProvider) GetToken() string {
 	username := "cassandra"
 	password := "cassandra"
 
@@ -38,15 +47,13 @@ func GetToken() string {
 		log.Fatalf("error marshalling request: %v", err)
 	}
 
-	client := getClient()
-
 	req, err := http.NewRequest(http.MethodPost, "http://localhost:8081/v1/auth", bytes.NewBuffer(jsonString))
 	if err != nil {
 		log.Fatalf("error creating request: %v", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	response, err := client.httpClient.Do(req)
+	response, err := t.client.httpClient.Do(req)
 	if err != nil {
 		log.Fatalf("error calling partnerservicecontrol API: %v", err)
 	}

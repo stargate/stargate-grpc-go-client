@@ -108,6 +108,11 @@ type UdtValue struct {
 }
 
 func translateType(spec *pb.TypeSpec, value *pb.Value) *Value {
+	if value.GetNull() != nil {
+		log.WithField("value", value.GetInner()).Debug("null value")
+		return nil
+	}
+
 	switch spec.GetSpec().(type) {
 	case *pb.TypeSpec_Basic_:
 		return translateBasicType(spec, value)
@@ -127,7 +132,7 @@ func translateType(spec *pb.TypeSpec, value *pb.Value) *Value {
 	case *pb.TypeSpec_List_:
 		log.WithField("value", value.GetCollection()).Debug("list")
 		var elements []*Value
-		for i, _ := range value.GetCollection().Elements {
+		for i := range value.GetCollection().Elements {
 			elements = append(elements, translateType(spec.GetList().Element, value.GetCollection().Elements[i]))
 		}
 		return &Value{

@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
 	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/client"
 )
 
@@ -15,7 +16,7 @@ func init() {
 }
 
 func main() {
-	stargateClient, err := client.NewStargateClient("localhost:8090")
+	stargateClient, err := client.NewStargateClient("localhost:8090", auth.NewTableBasedTokenProvider())
 	if err != nil {
 		log.Fatal(err)
 	}

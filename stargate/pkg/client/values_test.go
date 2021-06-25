@@ -11,8 +11,8 @@ import (
 
 func Test_translateType(t *testing.T) {
 	type args struct {
-		columnSpec *pb.ColumnSpec
-		value      *pb.Value
+		spec  *pb.TypeSpec
+		value *pb.Value
 	}
 	tests := []struct {
 		name string
@@ -22,11 +22,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "Custom",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_CUSTOM,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_CUSTOM,
 					},
 				},
 				value: &pb.Value{
@@ -42,11 +40,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "ASCII",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_ASCII,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_ASCII,
 					},
 				},
 				value: &pb.Value{
@@ -64,11 +60,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "BIGINT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_BIGINT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_BIGINT,
 					},
 				},
 				value: &pb.Value{
@@ -86,11 +80,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "BLOB",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_BLOB,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_BLOB,
 					},
 				},
 				value: &pb.Value{
@@ -106,11 +98,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "BOOLEAN",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_BOOLEAN,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_BOOLEAN,
 					},
 				},
 				value: &pb.Value{
@@ -128,11 +118,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "COUNTER",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_COUNTER,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_COUNTER,
 					},
 				},
 				value: &pb.Value{
@@ -150,11 +138,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "DOUBLE",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_DOUBLE,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_DOUBLE,
 					},
 				},
 				value: &pb.Value{
@@ -172,11 +158,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "FLOAT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_FLOAT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_FLOAT,
 					},
 				},
 				value: &pb.Value{
@@ -194,11 +178,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "INT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_INT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_INT,
 					},
 				},
 				value: &pb.Value{
@@ -216,11 +198,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "TEXT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_TEXT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_TEXT,
 					},
 				},
 				value: &pb.Value{
@@ -238,11 +218,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "TIMESTAMP",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_TIMESTAMP,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_TIMESTAMP,
 					},
 				},
 				value: &pb.Value{
@@ -260,11 +238,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "UUID",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_UUID,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_UUID,
 					},
 				},
 				value: &pb.Value{
@@ -288,11 +264,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "VARCHAR",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_VARCHAR,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_VARCHAR,
 					},
 				},
 				value: &pb.Value{
@@ -310,11 +284,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "TIMEUUID",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_TIMEUUID,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_TIMEUUID,
 					},
 				},
 				value: &pb.Value{
@@ -338,11 +310,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "INET",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_INET,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_INET,
 					},
 				},
 				value: &pb.Value{
@@ -360,11 +330,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "DATE",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_DATE,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_DATE,
 					},
 				},
 				value: &pb.Value{
@@ -382,11 +350,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "TIME",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_TIME,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_TIME,
 					},
 				},
 				value: &pb.Value{
@@ -404,13 +370,12 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "SMALLINT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_SMALLINT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_SMALLINT,
 					},
 				},
+
 				value: &pb.Value{
 					Inner: &pb.Value_Int{
 						Int: int64(2),
@@ -426,11 +391,9 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "TINYINT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Basic_{
-							Basic: pb.TypeSpec_TINYINT,
-						},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Basic_{
+						Basic: pb.TypeSpec_TINYINT,
 					},
 				},
 				value: &pb.Value{
@@ -448,19 +411,17 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "Collections - Map",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Map_{
-							Map: &pb.TypeSpec_Map{
-								Key: &pb.TypeSpec{
-									Spec: &pb.TypeSpec_Basic_{
-										Basic: pb.TypeSpec_TEXT,
-									},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Map_{
+						Map: &pb.TypeSpec_Map{
+							Key: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_TEXT,
 								},
-								Value: &pb.TypeSpec{
-									Spec: &pb.TypeSpec_Basic_{
-										Basic: pb.TypeSpec_DOUBLE,
-									},
+							},
+							Value: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_DOUBLE,
 								},
 							},
 						},
@@ -503,14 +464,12 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "Collections - List",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_List_{
-							List: &pb.TypeSpec_List{
-								Element: &pb.TypeSpec{
-									Spec: &pb.TypeSpec_Basic_{
-										Basic: pb.TypeSpec_DOUBLE,
-									},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_List_{
+						List: &pb.TypeSpec_List{
+							Element: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_DOUBLE,
 								},
 							},
 						},
@@ -553,14 +512,12 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "Collections - Set",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Set_{
-							Set: &pb.TypeSpec_Set{
-								Element: &pb.TypeSpec{
-									Spec: &pb.TypeSpec_Basic_{
-										Basic: pb.TypeSpec_INET,
-									},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Set_{
+						Set: &pb.TypeSpec_Set{
+							Element: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_INET,
 								},
 							},
 						},
@@ -603,25 +560,23 @@ func Test_translateType(t *testing.T) {
 		{
 			name: "Collections - Tuple",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Tuple_{
-							Tuple: &pb.TypeSpec_Tuple{
-								Elements: []*pb.TypeSpec{
-									{
-										Spec: &pb.TypeSpec_Basic_{
-											Basic: pb.TypeSpec_VARCHAR,
-										},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Tuple_{
+						Tuple: &pb.TypeSpec_Tuple{
+							Elements: []*pb.TypeSpec{
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_VARCHAR,
 									},
-									{
-										Spec: &pb.TypeSpec_Basic_{
-											Basic: pb.TypeSpec_INET,
-										},
+								},
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_INET,
 									},
-									{
-										Spec: &pb.TypeSpec_Basic_{
-											Basic: pb.TypeSpec_INT,
-										},
+								},
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_INT,
 									},
 								},
 							},
@@ -672,20 +627,18 @@ func Test_translateType(t *testing.T) {
 		}, {
 			name: "UDT",
 			args: args{
-				columnSpec: &pb.ColumnSpec{
-					Type: &pb.TypeSpec{
-						Spec: &pb.TypeSpec_Udt_{
-							Udt: &pb.TypeSpec_Udt{
-								Fields: map[string]*pb.TypeSpec{
-									"field1": {
-										Spec: &pb.TypeSpec_Basic_{
-											Basic: pb.TypeSpec_INT,
-										},
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Udt_{
+						Udt: &pb.TypeSpec_Udt{
+							Fields: map[string]*pb.TypeSpec{
+								"field1": {
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_INT,
 									},
-									"field2": {
-										Spec: &pb.TypeSpec_Basic_{
-											Basic: pb.TypeSpec_VARCHAR,
-										},
+								},
+								"field2": {
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_VARCHAR,
 									},
 								},
 							},
@@ -733,8 +686,134 @@ func Test_translateType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := translateType(tt.args.columnSpec.Type, tt.args.value); !reflect.DeepEqual(got, tt.want) {
+			if got := translateType(tt.args.spec, tt.args.value); !reflect.DeepEqual(got, tt.want) {
 				log.WithField("want", tt.want).WithField("got", got).Infof("foo")
+				t.Errorf("translateType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+}
+
+func Test_translateType_Collections(t *testing.T) {
+	type args struct {
+		spec  *pb.TypeSpec
+		value *pb.Value
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Value
+	}{
+		{
+			name: "Map - Empty",
+			args: args{
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Map_{
+						Map: &pb.TypeSpec_Map{
+							Key: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_TEXT,
+								},
+							},
+							Value: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_DOUBLE,
+								},
+							},
+						},
+					},
+				},
+				value: &pb.Value{
+					Inner: &pb.Value_Null_{
+						Null: &pb.Value_Null{},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "List - Empty",
+			args: args{
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_List_{
+						List: &pb.TypeSpec_List{
+							Element: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_DOUBLE,
+								},
+							},
+						},
+					},
+				},
+				value: &pb.Value{
+					Inner: &pb.Value_Null_{
+						Null: &pb.Value_Null{},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Set - Empty",
+			args: args{
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Set_{
+						Set: &pb.TypeSpec_Set{
+							Element: &pb.TypeSpec{
+								Spec: &pb.TypeSpec_Basic_{
+									Basic: pb.TypeSpec_INET,
+								},
+							},
+						},
+					},
+				},
+				value: &pb.Value{
+					Inner: &pb.Value_Null_{
+						Null: &pb.Value_Null{},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Tuple - Empty",
+			args: args{
+				spec: &pb.TypeSpec{
+					Spec: &pb.TypeSpec_Tuple_{
+						Tuple: &pb.TypeSpec_Tuple{
+							Elements: []*pb.TypeSpec{
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_VARCHAR,
+									},
+								},
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_INET,
+									},
+								},
+								{
+									Spec: &pb.TypeSpec_Basic_{
+										Basic: pb.TypeSpec_INT,
+									},
+								},
+							},
+						},
+					},
+				},
+				value: &pb.Value{
+					Inner: &pb.Value_Null_{
+						Null: &pb.Value_Null{},
+					},
+				},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := translateType(tt.args.spec, tt.args.value); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("translateType() = %v, want %v", got, tt.want)
 			}
 		})

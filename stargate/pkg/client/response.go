@@ -1,5 +1,11 @@
 package client
 
+type Response struct {
+	ResultSet *ResultSet
+	TracingId []byte
+	Warnings  []string
+}
+
 type ResultSet struct {
 	Columns     []*ColumnSpec
 	Rows        []*Row
