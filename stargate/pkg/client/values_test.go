@@ -488,7 +488,7 @@ func Test_translateType(t *testing.T) {
 			want: &Value{
 				Inner: ValueCollection{
 					Collection: &Collection{
-						Elements: []*Value {
+						Elements: []*Value{
 							{
 								Inner: ValueString{String: "foo"},
 							},
@@ -538,7 +538,7 @@ func Test_translateType(t *testing.T) {
 			want: &Value{
 				Inner: ValueCollection{
 					Collection: &Collection{
-						Elements: []*Value {
+						Elements: []*Value{
 							{
 								Inner: ValueDouble{Double: 1.2},
 							},
@@ -572,12 +572,12 @@ func Test_translateType(t *testing.T) {
 							Elements: []*pb.Value{
 								{
 									Inner: &pb.Value_Bytes{
-										Bytes: []byte{0,1,2},
+										Bytes: []byte{0, 1, 2},
 									},
 								},
 								{
 									Inner: &pb.Value_Bytes{
-										Bytes: []byte{3,4,5},
+										Bytes: []byte{3, 4, 5},
 									},
 								},
 							},
@@ -588,12 +588,12 @@ func Test_translateType(t *testing.T) {
 			want: &Value{
 				Inner: ValueCollection{
 					Collection: &Collection{
-						Elements: []*Value {
+						Elements: []*Value{
 							{
-								Inner: ValueBytes{Bytes: []byte{0,1,2}},
+								Inner: ValueBytes{Bytes: []byte{0, 1, 2}},
 							},
 							{
-								Inner: ValueBytes{Bytes: []byte{3,4,5}},
+								Inner: ValueBytes{Bytes: []byte{3, 4, 5}},
 							},
 						},
 					},
@@ -639,7 +639,7 @@ func Test_translateType(t *testing.T) {
 								},
 								{
 									Inner: &pb.Value_Bytes{
-										Bytes: []byte{0,1},
+										Bytes: []byte{0, 1},
 									},
 								},
 								{
@@ -655,12 +655,12 @@ func Test_translateType(t *testing.T) {
 			want: &Value{
 				Inner: ValueCollection{
 					Collection: &Collection{
-						Elements: []*Value {
+						Elements: []*Value{
 							{
 								Inner: ValueString{String: "bar"},
 							},
 							{
-								Inner: ValueBytes{Bytes: []byte{0,1}},
+								Inner: ValueBytes{Bytes: []byte{0, 1}},
 							},
 							{
 								Inner: ValueInt{Int: 3},

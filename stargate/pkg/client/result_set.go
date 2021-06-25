@@ -9,7 +9,7 @@ type ResultSet struct {
 
 type ColumnSpec struct {
 	TypeSpec TypeSpec
-	Name string
+	Name     string
 }
 
 type Row struct {
