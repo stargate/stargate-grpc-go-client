@@ -37,8 +37,7 @@ type Parameters struct {
 func NewStargateClient(target string) (*StargateClient, error) {
 	conn, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		// TODO: [doug] return err here
-		log.Println(err)
+		log.WithError(err).Error("Failed to create client")
 		return nil, fmt.Errorf("failed to create client: %v", err)
 	}
 
@@ -94,83 +93,27 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*ResultSet, error) {
 	}
 
 	var result ResultSet
-	result.Columns = []*ColumnSpec{}
 	result.Rows = []*Row{}
-
 	for i, row := range resultSet.Rows {
 		result.Rows = append(result.Rows, &Row{Values: []*Value{}})
 		for j, v := range row.Values {
-			columnSpec := resultSet.Columns[j]
-			unmarshalRowValue(columnSpec, v, result, i)
+			result.Rows[i].Values = append(result.Rows[i].Values, translateType(resultSet.Columns[j].Type, v))
 		}
 	}
+
+	result.Columns = []*ColumnSpec{}
+	for _, col := range resultSet.Columns {
+		result.Columns = append(result.Columns, columnSpecFromProto(col))
+	}
+
 	return &result, nil
 }
 
-func unmarshalRowValue(columnSpec *pb.ColumnSpec, value *pb.Value, result ResultSet, rowIndex int) {
-	switch columnSpec.Type.GetSpec().(type) {
-	case *pb.TypeSpec_Basic_:
-		handleBasicType(columnSpec, value, result, rowIndex)
-	case *pb.TypeSpec_Map_:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetCollection()).Debug("map")
-	case *pb.TypeSpec_List_:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetCollection()).Debug("list")
-	case *pb.TypeSpec_Set_:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetCollection()).Debug("set")
-	case *pb.TypeSpec_Udt_:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetUdt()).Debug("udt")
-	case *pb.TypeSpec_Tuple_:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetCollection()).Debug("tuple")
+func columnSpecFromProto(col *pb.ColumnSpec) *ColumnSpec {
+	return &ColumnSpec{
+		TypeSpec: mapTypeSpec(col.Type),
+		Name:     col.Name,
 	}
-}
-
-func handleBasicType(columnSpec *pb.ColumnSpec, value *pb.Value, result ResultSet, rowIndex int) {
-	var (
-		column *ColumnSpec
-		val *Value
-	)
-
-	switch columnSpec.Type.GetBasic() {
-	case pb.TypeSpec_ASCII:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetString_()).Debug("ascii")
-
-		column = &ColumnSpec{
-			TypeSpec: TypeSpecBasic{ASCII},
-			Name: columnSpec.Name,
-		}
-		val = &Value{
-			Inner: ValueString{
-				String: value.GetString_(),
-			},
-		}
-	case pb.TypeSpec_TEXT:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetString_()).Debug("text")
-
-		column = &ColumnSpec{
-			TypeSpec: TypeSpecBasic{TEXT},
-			Name: columnSpec.Name,
-		}
-		val = &Value{
-			Inner: ValueString{
-				String: value.GetString_(),
-			},
-		}
-	case pb.TypeSpec_VARCHAR:
-		log.WithField("name", columnSpec.Name).WithField("value", value.GetString_()).Debug("varchar")
-
-		column = &ColumnSpec{
-			TypeSpec: TypeSpecBasic{VARCHAR},
-			Name: columnSpec.Name,
-		}
-		val = &Value{
-			Inner: ValueString{
-				String: value.GetString_(),
-			},
-		}
-	}
-
-	result.Columns = append(result.Columns, column)
-	result.Rows[rowIndex].Values = append(result.Rows[rowIndex].Values, val)
 }
 
 func buildPayload(values interface{}) *pb.Payload {
