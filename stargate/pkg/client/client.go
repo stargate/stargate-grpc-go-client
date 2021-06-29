@@ -74,7 +74,12 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second+10)
 	defer cancel()
 
-	md := metadata.New(map[string]string{"x-cassandra-token": s.authProvider.GetToken()})
+	token, err := s.authProvider.GetToken()
+	if err != nil {
+		log.WithError(err).Error("Failed to get auth token")
+		return nil, fmt.Errorf("failed to get auth token: %v", err)
+	}
+	md := metadata.New(map[string]string{"x-cassandra-token": token})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	in := &pb.Query{

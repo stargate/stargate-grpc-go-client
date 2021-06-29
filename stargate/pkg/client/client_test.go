@@ -1,22 +1,84 @@
+// +build integration
+
 package client
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/docker/go-connections/nat"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
+)
+
+
+var (
+	grpcEndpoint string
+	authEndpoint string
 )
 
 func init() {
 	log.SetLevel(log.DebugLevel)
 	log.SetOutput(os.Stdout)
+
+	log.Info("Setting up test containers")
+
+	ctx := context.Background()
+	waitStrategy := wait.ForHTTP("/checker/readiness").WithPort("8084/tcp").WithStartupTimeout(90 * time.Second)
+
+	req := testcontainers.ContainerRequest{
+		Image: "stargateio/stargate-3_11:v1.0.28",
+		Env: map[string]string{
+			"CLUSTER_NAME":    "test",
+			"CLUSTER_VERSION": "3.11",
+			"DEVELOPER_MODE":  "true",
+			"ENABLE_AUTH":  "true",
+		},
+		ExposedPorts: []string{"8090/tcp", "8081/tcp", "8084/tcp"},
+		WaitingFor:   waitStrategy,
+	}
+	stargateContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to start Stargate container: %v", err)
+	}
+
+	grpcPort, err := nat.NewPort("tcp", "8090")
+	if err != nil {
+		log.Fatalf("Failed to get port: %v", err)
+	}
+	authPort, err := nat.NewPort("tcp", "8081")
+	if err != nil {
+		log.Fatalf("Failed to get port: %v", err)
+	}
+
+	grpcEndpoint, err = stargateContainer.PortEndpoint(ctx, grpcPort, "")
+	if err != nil {
+		log.Fatalf("Failed to get endpoint: %v", err)
+	}
+
+	authEndpoint, err = stargateContainer.PortEndpoint(ctx, authPort, "")
+	if err != nil {
+		log.Fatalf("Failed to get endpoint: %v", err)
+	}
 }
 
 func TestNewQuery(t *testing.T) {
-	stargateClient, err := NewStargateClient("localhost:8090", auth.NewTableBasedTokenProvider())
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient, err := NewStargateClient(grpcEndpoint, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
@@ -47,7 +109,11 @@ func TestNewQuery(t *testing.T) {
 }
 
 func TestNewQuery_AllNumeric(t *testing.T) {
-	stargateClient, err := NewStargateClient("localhost:8090", auth.NewTableBasedTokenProvider())
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient, err := NewStargateClient(grpcEndpoint, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
@@ -76,7 +142,11 @@ func TestNewQuery_AllNumeric(t *testing.T) {
 }
 
 func TestNewQuery_DoStuff(t *testing.T) {
-	stargateClient, err := NewStargateClient("localhost:8090", auth.NewTableBasedTokenProvider())
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient, err := NewStargateClient(grpcEndpoint, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}

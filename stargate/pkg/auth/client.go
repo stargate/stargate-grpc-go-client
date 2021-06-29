@@ -3,6 +3,7 @@ package auth
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -12,6 +13,8 @@ import (
 
 type TableBasedTokenProvider struct {
 	client *client
+	username string
+	password string
 }
 
 type client struct {
@@ -19,43 +22,45 @@ type client struct {
 	httpClient *http.Client
 }
 
-type AuthResp struct {
+type AuthResponse struct {
 	AuthToken string `json:"authToken"`
 }
 
-type AuthReq struct {
+type AuthRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func NewTableBasedTokenProvider() TableBasedTokenProvider {
+func NewTableBasedTokenProvider(serviceURL, username, password string) TableBasedTokenProvider {
 	return TableBasedTokenProvider{
-		client: getClient(),
+		client: getClient(serviceURL),
+		username: username,
+		password: password,
 	}
 }
 
-func (t TableBasedTokenProvider) GetToken() string {
-	username := "cassandra"
-	password := "cassandra"
-
-	AuthReq := AuthReq{
-		Username: username,
-		Password: password,
+func (t TableBasedTokenProvider) GetToken() (string, error) {
+	AuthReq := AuthRequest{
+		Username: t.username,
+		Password: t.password,
 	}
 	jsonString, err := json.Marshal(AuthReq)
 	if err != nil {
-		log.Fatalf("error marshalling request: %v", err)
+		log.Errorf("error marshalling request: %v", err)
+		return "", fmt.Errorf("error marshalling request: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8081/v1/auth", bytes.NewBuffer(jsonString))
+	req, err := http.NewRequest(http.MethodPost, t.client.serviceURL, bytes.NewBuffer(jsonString))
 	if err != nil {
-		log.Fatalf("error creating request: %v", err)
+		log.Errorf("error creating request: %v", err)
+		return "", fmt.Errorf("error creating request: %v", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
 	response, err := t.client.httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("error calling partnerservicecontrol API: %v", err)
+		log.Errorf("error calling auth service: %v", err)
+		return "", fmt.Errorf("error calling auth service: %v", err)
 	}
 
 	defer func() {
@@ -67,21 +72,23 @@ func (t TableBasedTokenProvider) GetToken() string {
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalf("error reading response body: %v", err)
+		log.Errorf("error reading response body: %v", err)
+		return "", fmt.Errorf("error reading response body: %v", err)
 	}
 
-	ar := AuthResp{}
+	ar := AuthResponse{}
 	err = json.Unmarshal(body, &ar)
 	if err != nil {
-		log.Fatalf("error unmarshalling response body: %v", err)
+		log.Errorf("error unmarshalling response body: %v", err)
+		return "", fmt.Errorf("error unmarshalling response body: %v", err)
 	}
 
-	return ar.AuthToken
+	return ar.AuthToken, nil
 }
 
-func getClient() *client {
+func getClient(serviceURL string) *client {
 	return &client{
-		serviceURL: "",
+		serviceURL: serviceURL,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
