@@ -18,7 +18,6 @@ import (
 	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
 )
 
-
 var (
 	grpcEndpoint string
 	authEndpoint string
@@ -141,7 +140,7 @@ func TestNewQuery_AllNumeric(t *testing.T) {
 	assert.Equal(t, int32(0), result.PageSize)
 }
 
-func TestNewQuery_DoStuff(t *testing.T) {
+func TestNewQuery_FullCRUD(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -216,4 +215,30 @@ func TestNewQuery_DoStuff(t *testing.T) {
 
 	assert.Equal(t, &Value{Inner: ValueString{String: "alpha"}}, response.ResultSet.Rows[0].Values[0])
 	assert.Equal(t, &Value{Inner: ValueInt{Int: 2}}, response.ResultSet.Rows[0].Values[1])
+}
+
+func TestNewQuery_ParameterizedQuery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient, err := NewStargateClient(grpcEndpoint, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
+	if err != nil {
+		assert.FailNow(t, "Should not have returned error", err)
+	}
+
+	// read from table
+	query := NewQuery()
+	query.Cql = "select * from system_schema.keyspaces where keyspace_name = ?"
+	query.Values = Payload{
+		Type: Payload_CQL,
+		Data: []Value{{Inner: ValueString{String: "system"}}},
+	}
+	response, err := stargateClient.ExecuteQuery(query)
+	if err != nil {
+		assert.FailNow(t, "Should not have returned error", err)
+	}
+
+	assert.Equal(t, 1, len(response.ResultSet.Rows))
+	assert.Equal(t, &Value{Inner: ValueString{String: "system"}}, response.ResultSet.Rows[0].Values[0])
 }

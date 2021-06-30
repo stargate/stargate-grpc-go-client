@@ -12,6 +12,7 @@ type Value struct {
 
 type ValueInner interface {
 	isValue()
+	toProtoInner() pb.Value
 }
 
 type ValueString struct {
@@ -20,12 +21,22 @@ type ValueString struct {
 
 func (ValueString) isValue() {}
 
+func (v ValueString) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_String_{String_: v.String}}
+}
+
 type ValueInt struct {
 	// CQL types: tinyint, smallint, int, bigint, counter, timestamp
 	Int int64
 }
 
 func (ValueInt) isValue() {}
+
+func (v ValueInt) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Int{
+		Int: v.Int,
+	}}
+}
 
 type ValueFloat struct {
 	// CQL types: float
@@ -34,6 +45,12 @@ type ValueFloat struct {
 
 func (ValueFloat) isValue() {}
 
+func (v ValueFloat) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Float{
+		Float: v.Float,
+	}}
+}
+
 type ValueDouble struct {
 	// CQL types: double
 	Double float64
@@ -41,11 +58,23 @@ type ValueDouble struct {
 
 func (ValueDouble) isValue() {}
 
+func (v ValueDouble) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Double{
+		Double: v.Double,
+	}}
+}
+
 type ValueBoolean struct {
 	Boolean bool
 }
 
 func (ValueBoolean) isValue() {}
+
+func (v ValueBoolean) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Boolean{
+		Boolean: v.Boolean,
+	}}
+}
 
 type ValueBytes struct {
 	// CQL types: blob, inet, custom
@@ -53,6 +82,12 @@ type ValueBytes struct {
 }
 
 func (ValueBytes) isValue() {}
+
+func (v ValueBytes) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Bytes{
+		Bytes: v.Bytes,
+	}}
+}
 
 type ValueUUID struct {
 	// CQL types: uuid, timeuuid
@@ -66,6 +101,15 @@ type Uuid struct {
 
 func (ValueUUID) isValue() {}
 
+func (v ValueUUID) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Uuid{
+		Uuid: &pb.Uuid{
+			Msb: v.UUID.Msb,
+			Lsb: v.UUID.Lsb,
+		},
+	}}
+}
+
 type ValueDate struct {
 	// CQL types: date
 	// An unsigned integer representing days with Unix epoch (January, 1 1970) at 2^31.
@@ -78,6 +122,12 @@ type ValueDate struct {
 
 func (ValueDate) isValue() {}
 
+func (v ValueDate) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Date{
+		Date: v.Date,
+	}}
+}
+
 type ValueTime struct {
 	// CQL types: time
 	// An unsigned integer representing the number of nanoseconds since midnight. Valid values are
@@ -87,14 +137,36 @@ type ValueTime struct {
 
 func (ValueTime) isValue() {}
 
+func (v ValueTime) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Time{
+		Time: v.Time,
+	}}
+}
+
 type ValueCollection struct {
 	Collection *Collection
 }
 
 func (ValueCollection) isValue() {}
 
+func (v ValueCollection) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Collection{
+		Collection: v.Collection.toProto(),
+	}}
+}
+
 type Collection struct {
 	Elements []*Value
+}
+
+func (c Collection) toProto() *pb.Collection {
+	var elements []*pb.Value
+	for _, element := range c.Elements {
+		elements = append(elements, &pb.Value{Inner: element.Inner.toProtoInner().Inner})
+	}
+	return &pb.Collection{
+		Elements: elements,
+	}
 }
 
 type ValueUdt struct {
@@ -103,8 +175,25 @@ type ValueUdt struct {
 
 func (ValueUdt) isValue() {}
 
+func (v ValueUdt) toProtoInner() pb.Value {
+	return pb.Value{Inner: &pb.Value_Udt{
+		Udt: v.UDT.toProto(),
+	}}
+}
+
 type UdtValue struct {
 	Fields map[string]*Value
+}
+
+func (v UdtValue) toProto() *pb.UdtValue {
+	fields := map[string]*pb.Value{}
+	for key, field := range v.Fields {
+		fields[key] = &pb.Value{Inner: field.Inner.toProtoInner().Inner}
+	}
+
+	return &pb.UdtValue{
+		Fields: fields,
+	}
 }
 
 func translateType(spec *pb.TypeSpec, value *pb.Value) *Value {

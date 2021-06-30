@@ -12,7 +12,7 @@ import (
 )
 
 type TableBasedTokenProvider struct {
-	client *client
+	client   *client
 	username string
 	password string
 }
@@ -33,7 +33,7 @@ type AuthRequest struct {
 
 func NewTableBasedTokenProvider(serviceURL, username, password string) TableBasedTokenProvider {
 	return TableBasedTokenProvider{
-		client: getClient(serviceURL),
+		client:   getClient(serviceURL),
 		username: username,
 		password: password,
 	}

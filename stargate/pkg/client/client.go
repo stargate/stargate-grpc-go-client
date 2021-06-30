@@ -52,12 +52,6 @@ func NewStargateClient(target string, authProvider auth.AuthProviderIFace) (*Sta
 	}, nil
 }
 
-type Query struct {
-	Cql        string
-	Values     interface{}
-	Parameters Parameters
-}
-
 type Batch struct{}
 
 func NewQuery() *Query {
@@ -82,9 +76,15 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 	md := metadata.New(map[string]string{"x-cassandra-token": token})
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
+	payload, err := buildPayload(query.Values)
+	if err != nil {
+		log.WithError(err).Error("Failed to build payload")
+		return nil, fmt.Errorf("failed to build payload: %v", err)
+	}
+
 	in := &pb.Query{
 		Cql:        query.Cql,
-		Values:     buildPayload(query.Values),
+		Values:     payload,
 		Parameters: buildQueryParameters(query.Parameters),
 	}
 
@@ -142,12 +142,24 @@ func columnSpecFromProto(col *pb.ColumnSpec) *ColumnSpec {
 	}
 }
 
-func buildPayload(values interface{}) *pb.Payload {
-	// TODO: [doug] implement this
-	return &pb.Payload{
-		Type: 0,
-		Data: nil,
+func buildPayload(payload Payload) (*pb.Payload, error) {
+	var values []*pb.Value
+	for _, value := range payload.Data {
+		values = append(values, &pb.Value{Inner: value.Inner.toProtoInner().Inner})
 	}
+	any, err := anypb.New(
+		&pb.Values{
+			Values: values,
+		},
+	)
+	if err != nil {
+		log.Errorf("unable to marshal into any: %v", err)
+		return nil, fmt.Errorf("unable to marshal into any: %v", err)
+	}
+	return &pb.Payload{
+		Type: payload.Type.toProtoType(),
+		Data: any,
+	}, nil
 }
 
 func buildQueryParameters(parameters Parameters) *pb.QueryParameters {
