@@ -7,6 +7,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -21,7 +23,8 @@ import (
 type StargateClient struct {
 	client       pb.StargateClient
 	conn         *grpc.ClientConn
-	authProvider auth.AuthProviderIFace
+	authProvider auth.AuthProvider
+	token        string
 }
 
 type Parameters struct {
@@ -36,7 +39,7 @@ type Parameters struct {
 	NowInSeconds      int32
 }
 
-func NewStargateClient(target string, authProvider auth.AuthProviderIFace) (*StargateClient, error) {
+func NewStargateClient(target string, authProvider auth.AuthProvider) (*StargateClient, error) {
 	conn, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.WithError(err).Error("Failed to create client")
@@ -67,14 +70,14 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 	// TODO: [doug] configurable timeout?
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second+10)
 	defer cancel()
+	return s.ExecuteQueryWithContext(query, ctx)
+}
 
-	token, err := s.authProvider.GetToken()
+func (s *StargateClient) ExecuteQueryWithContext(query *Query, ctx context.Context) (*Response, error) {
+	ctx, err := s.setMetadata(ctx)
 	if err != nil {
-		log.WithError(err).Error("Failed to get auth token")
-		return nil, fmt.Errorf("failed to get auth token: %v", err)
+		return nil, err
 	}
-	md := metadata.New(map[string]string{"x-cassandra-token": token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	payload, err := buildPayload(query.Values)
 	if err != nil {
@@ -90,22 +93,38 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 
 	resp, err := s.client.ExecuteQuery(ctx, in)
 	if err != nil {
-		log.WithError(err).Error("Failed to execute query")
-		return nil, fmt.Errorf("failed to execute query: %v", err)
+		if e, ok := status.FromError(err); ok {
+			if e.Code() == codes.Unauthenticated {
+				s.token = "" // clear out bad token before getting a new one
+				ctx, err := s.setMetadata(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				resp, err = s.client.ExecuteQuery(ctx, in)
+				if err != nil {
+					log.WithError(err).Error("Failed to execute query")
+					return nil, fmt.Errorf("failed to execute query: %v", err)
+				}
+			} else {
+				log.WithError(err).Error("Failed to execute query")
+				return nil, fmt.Errorf("failed to execute query: %v", err)
+			}
+		}
 	}
 
 	response := &Response{
-		TracingId: resp.TracingId,
-		Warnings:  resp.Warnings,
+		Traces:   translateTraces(resp.Traces),
+		Warnings: resp.Warnings,
 	}
 
-	if resp.ResultSet == nil {
+	if resp.GetResultSet() == nil {
 		// Valid for not all requests to have a ResultSet (e.g. schema changes). Since we've made it this far the request
 		// was successful so just return warnings and tracing info
 		return response, nil
 	}
 
-	data := resp.ResultSet.Data
+	data := resp.GetResultSet().Data
 
 	var resultSet pb.ResultSet
 	if err := anypb.UnmarshalTo(data, &resultSet, proto.UnmarshalOptions{}); err != nil {
@@ -131,7 +150,26 @@ func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
 	return response, nil
 }
 
+func (s *StargateClient) setMetadata(ctx context.Context) (context.Context, error) {
+	if s.token == "" {
+		token, err := s.authProvider.GetToken(ctx)
+		if err != nil {
+			log.WithError(err).Error("Failed to get auth token")
+			return nil, fmt.Errorf("failed to get auth token: %v", err)
+		}
+		s.token = token
+	}
+
+	md := metadata.New(map[string]string{"x-cassandra-token": s.token})
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	return ctx, nil
+}
+
 func (s *StargateClient) ExecuteBatch(batch *Batch) (*Response, error) {
+	return nil, errors.New("not yet implemented")
+}
+
+func (s *StargateClient) ExecuteBatchWithContext(batch *Batch, ctx context.Context) (*Response, error) {
 	return nil, errors.New("not yet implemented")
 }
 

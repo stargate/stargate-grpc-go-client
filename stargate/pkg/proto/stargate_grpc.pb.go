@@ -18,7 +18,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StargateClient interface {
+	// Executes a single CQL query.
 	ExecuteQuery(ctx context.Context, in *Query, opts ...grpc.CallOption) (*Response, error)
+	// Executes a batch of CQL queries.
 	ExecuteBatch(ctx context.Context, in *Batch, opts ...grpc.CallOption) (*Response, error)
 }
 
@@ -52,7 +54,9 @@ func (c *stargateClient) ExecuteBatch(ctx context.Context, in *Batch, opts ...gr
 // All implementations must embed UnimplementedStargateServer
 // for forward compatibility
 type StargateServer interface {
+	// Executes a single CQL query.
 	ExecuteQuery(context.Context, *Query) (*Response, error)
+	// Executes a batch of CQL queries.
 	ExecuteBatch(context.Context, *Batch) (*Response, error)
 	mustEmbedUnimplementedStargateServer()
 }

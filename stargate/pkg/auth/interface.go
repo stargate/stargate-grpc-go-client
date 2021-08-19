@@ -1,5 +1,7 @@
 package auth
 
-type AuthProviderIFace interface {
-	GetToken() (string, error)
+import "context"
+
+type AuthProvider interface {
+	GetToken(ctx context.Context) (string, error)
 }

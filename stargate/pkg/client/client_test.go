@@ -3,17 +3,13 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
 )
@@ -38,7 +34,7 @@ func init() {
 			"CLUSTER_NAME":    "test",
 			"CLUSTER_VERSION": "3.11",
 			"DEVELOPER_MODE":  "true",
-			"ENABLE_AUTH":  "true",
+			"ENABLE_AUTH":     "true",
 		},
 		ExposedPorts: []string{"8090/tcp", "8081/tcp", "8084/tcp"},
 		WaitingFor:   waitStrategy,

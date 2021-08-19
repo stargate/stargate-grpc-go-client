@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type TableBasedTokenProvider struct {
+type tableBasedTokenProvider struct {
 	client   *client
 	username string
 	password string
@@ -22,35 +23,36 @@ type client struct {
 	httpClient *http.Client
 }
 
-type AuthResponse struct {
+type authResponse struct {
 	AuthToken string `json:"authToken"`
 }
 
-type AuthRequest struct {
+type authRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func NewTableBasedTokenProvider(serviceURL, username, password string) TableBasedTokenProvider {
-	return TableBasedTokenProvider{
+func NewTableBasedTokenProvider(serviceURL, username, password string) AuthProvider {
+	return tableBasedTokenProvider{
 		client:   getClient(serviceURL),
 		username: username,
 		password: password,
 	}
 }
 
-func (t TableBasedTokenProvider) GetToken() (string, error) {
-	AuthReq := AuthRequest{
+// TODO: [doug] Figure out how to cache
+func (t tableBasedTokenProvider) GetToken(ctx context.Context) (string, error) {
+	authReq := authRequest{
 		Username: t.username,
 		Password: t.password,
 	}
-	jsonString, err := json.Marshal(AuthReq)
+	jsonString, err := json.Marshal(authReq)
 	if err != nil {
 		log.Errorf("error marshalling request: %v", err)
 		return "", fmt.Errorf("error marshalling request: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, t.client.serviceURL, bytes.NewBuffer(jsonString))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.client.serviceURL, bytes.NewBuffer(jsonString))
 	if err != nil {
 		log.Errorf("error creating request: %v", err)
 		return "", fmt.Errorf("error creating request: %v", err)
@@ -76,7 +78,7 @@ func (t TableBasedTokenProvider) GetToken() (string, error) {
 		return "", fmt.Errorf("error reading response body: %v", err)
 	}
 
-	ar := AuthResponse{}
+	ar := authResponse{}
 	err = json.Unmarshal(body, &ar)
 	if err != nil {
 		log.Errorf("error unmarshalling response body: %v", err)
