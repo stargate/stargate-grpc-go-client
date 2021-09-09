@@ -9,43 +9,23 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
 	pb "github.com/stargate/stargate-grpc-go-client/stargate/pkg/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type StargateClient struct {
 	client       pb.StargateClient
-	conn         *grpc.ClientConn
+	conn         grpc.ClientConnInterface
 	authProvider auth.AuthProvider
 	token        string
 }
 
-type Parameters struct {
-	Keyspace          string
-	Consistency       Consistency
-	PageSize          int32
-	PagingState       []byte
-	Tracing           bool
-	SkipMetadata      bool
-	Timestamp         int64
-	SerialConsistency SerialConsistency
-	NowInSeconds      int32
-}
-
-func NewStargateClient(target string, authProvider auth.AuthProvider) (*StargateClient, error) {
-	conn, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.WithError(err).Error("Failed to create client")
-		return nil, fmt.Errorf("failed to create client: %v", err)
-	}
-
+func NewStargateClientWithConn(conn grpc.ClientConnInterface, authProvider auth.AuthProvider) (*StargateClient, error) {
 	client := pb.NewStargateClient(conn)
 
 	return &StargateClient{
@@ -57,41 +37,19 @@ func NewStargateClient(target string, authProvider auth.AuthProvider) (*Stargate
 
 type Batch struct{}
 
-func NewQuery() *Query {
-	return &Query{
-		Parameters: Parameters{
-			Consistency:       UNSET,
-			SerialConsistency: UNSET_SERIAL,
-		},
-	}
-}
-
-func (s *StargateClient) ExecuteQuery(query *Query) (*Response, error) {
-	// TODO: [doug] configurable timeout?
+func (s *StargateClient) ExecuteQuery(query *pb.Query) (*pb.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second+10)
 	defer cancel()
 	return s.ExecuteQueryWithContext(query, ctx)
 }
 
-func (s *StargateClient) ExecuteQueryWithContext(query *Query, ctx context.Context) (*Response, error) {
+func (s *StargateClient) ExecuteQueryWithContext(query *pb.Query, ctx context.Context) (*pb.Response, error) {
 	ctx, err := s.setMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	payload, err := buildPayload(query.Values)
-	if err != nil {
-		log.WithError(err).Error("Failed to build payload")
-		return nil, fmt.Errorf("failed to build payload: %v", err)
-	}
-
-	in := &pb.Query{
-		Cql:        query.Cql,
-		Values:     payload,
-		Parameters: buildQueryParameters(query.Parameters),
-	}
-
-	resp, err := s.client.ExecuteQuery(ctx, in)
+	resp, err := s.client.ExecuteQuery(ctx, query)
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			if e.Code() == codes.Unauthenticated {
@@ -101,7 +59,7 @@ func (s *StargateClient) ExecuteQueryWithContext(query *Query, ctx context.Conte
 					return nil, err
 				}
 
-				resp, err = s.client.ExecuteQuery(ctx, in)
+				resp, err = s.client.ExecuteQuery(ctx, query)
 				if err != nil {
 					log.WithError(err).Error("Failed to execute query")
 					return nil, fmt.Errorf("failed to execute query: %v", err)
@@ -113,41 +71,7 @@ func (s *StargateClient) ExecuteQueryWithContext(query *Query, ctx context.Conte
 		}
 	}
 
-	response := &Response{
-		Traces:   translateTraces(resp.Traces),
-		Warnings: resp.Warnings,
-	}
-
-	if resp.GetResultSet() == nil {
-		// Valid for not all requests to have a ResultSet (e.g. schema changes). Since we've made it this far the request
-		// was successful so just return warnings and tracing info
-		return response, nil
-	}
-
-	data := resp.GetResultSet().Data
-
-	var resultSet pb.ResultSet
-	if err := anypb.UnmarshalTo(data, &resultSet, proto.UnmarshalOptions{}); err != nil {
-		log.WithError(err).Error("Could not unmarshal result")
-		return nil, fmt.Errorf("could not unmarshal result: %v", err)
-	}
-
-	var result ResultSet
-	result.Rows = []*Row{}
-	for i, row := range resultSet.Rows {
-		result.Rows = append(result.Rows, &Row{Values: []*Value{}})
-		for j, v := range row.Values {
-			result.Rows[i].Values = append(result.Rows[i].Values, translateType(resultSet.Columns[j].Type, v))
-		}
-	}
-
-	result.Columns = []*ColumnSpec{}
-	for _, col := range resultSet.Columns {
-		result.Columns = append(result.Columns, columnSpecFromProto(col))
-	}
-
-	response.ResultSet = &result
-	return response, nil
+	return resp, nil
 }
 
 func (s *StargateClient) setMetadata(ctx context.Context) (context.Context, error) {
@@ -165,83 +89,24 @@ func (s *StargateClient) setMetadata(ctx context.Context) (context.Context, erro
 	return ctx, nil
 }
 
-func (s *StargateClient) ExecuteBatch(batch *Batch) (*Response, error) {
+func (s *StargateClient) ExecuteBatch(batch *Batch) (*pb.Response, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (s *StargateClient) ExecuteBatchWithContext(batch *Batch, ctx context.Context) (*Response, error) {
+func (s *StargateClient) ExecuteBatchWithContext(batch *Batch, ctx context.Context) (*pb.Response, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func columnSpecFromProto(col *pb.ColumnSpec) *ColumnSpec {
-	return &ColumnSpec{
-		TypeSpec: mapTypeSpec(col.Type),
-		Name:     col.Name,
-	}
-}
-
-func buildPayload(payload Payload) (*pb.Payload, error) {
-	var values []*pb.Value
-	for _, value := range payload.Data {
-		values = append(values, &pb.Value{Inner: value.Inner.toProtoInner().Inner})
-	}
-	any, err := anypb.New(
-		&pb.Values{
-			Values: values,
-		},
-	)
-	if err != nil {
-		log.Errorf("unable to marshal into any: %v", err)
-		return nil, fmt.Errorf("unable to marshal into any: %v", err)
-	}
-	return &pb.Payload{
-		Type: payload.Type.toProtoType(),
-		Data: any,
-	}, nil
-}
-
-func buildQueryParameters(parameters Parameters) *pb.QueryParameters {
-	params := &pb.QueryParameters{
-		Tracing:      parameters.Tracing,
-		SkipMetadata: parameters.SkipMetadata,
+func ToResultSet(resp *pb.Response) (*pb.ResultSet, error) {
+	if resp.GetResultSet() == nil {
+		return nil, errors.New("no result set")
 	}
 
-	if parameters.Keyspace != "" {
-		params.Keyspace = wrapperspb.String(parameters.Keyspace)
+	data := resp.GetResultSet().Data
+	var resultSet pb.ResultSet
+	if err := anypb.UnmarshalTo(data, &resultSet, proto.UnmarshalOptions{}); err != nil {
+		log.WithError(err).Error("Could not unmarshal result")
+		return nil, fmt.Errorf("could not unmarshal result: %v", err)
 	}
-
-	if parameters.Consistency == UNSET {
-		params.Consistency = convertConsistency(ONE)
-	} else {
-		params.Consistency = convertConsistency(parameters.Consistency)
-	}
-
-	if parameters.PageSize > 0 {
-		params.PageSize = wrapperspb.Int32(parameters.PageSize)
-	}
-
-	if parameters.PagingState != nil {
-		params.PagingState = wrapperspb.Bytes(parameters.PagingState)
-	}
-
-	if parameters.Timestamp > 0 {
-		params.Timestamp = wrapperspb.Int64(parameters.Timestamp)
-	}
-
-	if parameters.SerialConsistency != UNSET_SERIAL {
-		params.SerialConsistency = convertSerialConsistency(parameters.SerialConsistency)
-	}
-
-	if parameters.NowInSeconds > 0 {
-		params.NowInSeconds = wrapperspb.Int32(parameters.NowInSeconds)
-	}
-
-	return params
-}
-
-func (s StargateClient) Close() {
-	err := s.conn.Close()
-	if err != nil {
-		log.Printf("unable to close connection: %v", err)
-	}
+	return &resultSet, nil
 }

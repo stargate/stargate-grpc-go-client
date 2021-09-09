@@ -1,6 +1,8 @@
 package client
 
+import pb "github.com/stargate/stargate-grpc-go-client/stargate/pkg/proto"
+
 type StargateClientIFace interface {
-	ExecuteQuery(query *Query) (*Response, error)
-	ExecuteBatch(batch *Batch) (*Response, error)
+	ExecuteQuery(query *pb.Query) (*pb.Response, error)
+	ExecuteBatch(batch *Batch) (*pb.Response, error)
 }
