@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/credentials"
 )
 
 type tableBasedTokenProvider struct {
@@ -32,7 +33,7 @@ type authRequest struct {
 	Password string `json:"password"`
 }
 
-func NewTableBasedTokenProvider(serviceURL, username, password string) AuthProvider {
+func NewTableBasedTokenProvider(serviceURL, username, password string) credentials.PerRPCCredentials {
 	return tableBasedTokenProvider{
 		client:   getClient(serviceURL),
 		username: username,
@@ -40,8 +41,21 @@ func NewTableBasedTokenProvider(serviceURL, username, password string) AuthProvi
 	}
 }
 
+func (t tableBasedTokenProvider) RequireTransportSecurity() bool {
+	return false
+}
+
+func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	token, err := t.getToken(ctx)
+	if err != nil {
+		log.WithError(err).Error("Failed to get auth token")
+		return nil, fmt.Errorf("failed to get auth token: %v", err)
+	}
+	return map[string]string{"x-cassandra-token": token}, nil
+}
+
 // TODO: [doug] Figure out how to cache
-func (t tableBasedTokenProvider) GetToken(ctx context.Context) (string, error) {
+func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 	authReq := authRequest{
 		Username: t.username,
 		Password: t.password,

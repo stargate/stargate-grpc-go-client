@@ -84,12 +84,13 @@ func TestNewQuery(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
 
-	stargateClient, err := NewStargateClientWithConn(conn, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
+	stargateClient, err := NewStargateClientWithConn(conn)
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
@@ -128,10 +129,11 @@ func TestNewQuery_AllNumeric(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
 	require.NoError(t, err)
 
-	stargateClient, err := NewStargateClientWithConn(conn, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
+	stargateClient, err := NewStargateClientWithConn(conn)
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
@@ -171,10 +173,11 @@ func TestNewQuery_FullCRUD(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
 	require.NoError(t, err)
 
-	stargateClient, err := NewStargateClientWithConn(conn, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
+	stargateClient, err := NewStargateClientWithConn(conn)
 	require.NoError(t, err)
 
 	var unsetResultSet *pb.Payload
@@ -418,10 +421,11 @@ func TestNewQuery_ParameterizedQuery(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
 	require.NoError(t, err)
 
-	stargateClient, err := NewStargateClientWithConn(conn, auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra"))
+	stargateClient, err := NewStargateClientWithConn(conn)
 	if err != nil {
 		assert.FailNow(t, "Should not have returned error", err)
 	}

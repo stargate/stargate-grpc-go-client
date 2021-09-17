@@ -7,31 +7,27 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
 	pb "github.com/stargate/stargate-grpc-go-client/stargate/pkg/proto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type StargateClient struct {
 	client       pb.StargateClient
 	conn         grpc.ClientConnInterface
-	authProvider auth.AuthProvider
+	authProvider credentials.PerRPCCredentials
 	token        string
 }
 
-func NewStargateClientWithConn(conn grpc.ClientConnInterface, authProvider auth.AuthProvider) (*StargateClient, error) {
+func NewStargateClientWithConn(conn grpc.ClientConnInterface) (*StargateClient, error) {
 	client := pb.NewStargateClient(conn)
 
 	return &StargateClient{
 		client:       client,
 		conn:         conn,
-		authProvider: authProvider,
 	}, nil
 }
 
@@ -44,49 +40,13 @@ func (s *StargateClient) ExecuteQuery(query *pb.Query) (*pb.Response, error) {
 }
 
 func (s *StargateClient) ExecuteQueryWithContext(query *pb.Query, ctx context.Context) (*pb.Response, error) {
-	ctx, err := s.setMetadata(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.client.ExecuteQuery(ctx, query)
 	if err != nil {
-		if e, ok := status.FromError(err); ok {
-			if e.Code() == codes.Unauthenticated {
-				s.token = "" // clear out bad token before getting a new one
-				ctx, err := s.setMetadata(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				resp, err = s.client.ExecuteQuery(ctx, query)
-				if err != nil {
-					log.WithError(err).Error("Failed to execute query")
-					return nil, fmt.Errorf("failed to execute query: %v", err)
-				}
-			} else {
-				log.WithError(err).Error("Failed to execute query")
-				return nil, fmt.Errorf("failed to execute query: %v", err)
-			}
-		}
+		log.WithError(err).Error("Failed to execute query")
+		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
 
 	return resp, nil
-}
-
-func (s *StargateClient) setMetadata(ctx context.Context) (context.Context, error) {
-	if s.token == "" {
-		token, err := s.authProvider.GetToken(ctx)
-		if err != nil {
-			log.WithError(err).Error("Failed to get auth token")
-			return nil, fmt.Errorf("failed to get auth token: %v", err)
-		}
-		s.token = token
-	}
-
-	md := metadata.New(map[string]string{"x-cassandra-token": s.token})
-	ctx = metadata.NewOutgoingContext(ctx, md)
-	return ctx, nil
 }
 
 func (s *StargateClient) ExecuteBatch(batch *Batch) (*pb.Response, error) {
