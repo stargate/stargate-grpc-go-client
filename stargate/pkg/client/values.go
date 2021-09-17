@@ -15,7 +15,7 @@ func ToUUID(val *pb.Value) (*uuid.UUID, error) {
 	if val, ok := val.GetInner().(*pb.Value_Uuid); ok {
 		mostSigBits := val.Uuid.Msb
 		leastSigBits := val.Uuid.Lsb
-		uuidStr := digits(mostSigBits >> int64(32), 8) + "-" + digits(mostSigBits >> int64(16), 4) + "-" + digits(mostSigBits, 4) + "-" + digits(leastSigBits >> int64(48), 4) + "-" + digits(leastSigBits, 12)
+		uuidStr := digits(mostSigBits>>int64(32), 8) + "-" + digits(mostSigBits>>int64(16), 4) + "-" + digits(mostSigBits, 4) + "-" + digits(leastSigBits>>int64(48), 4) + "-" + digits(leastSigBits, 12)
 
 		parsedUUID := uuid.MustParse(uuidStr)
 		return &parsedUUID, nil
@@ -30,7 +30,7 @@ func ToTimeUUID(val *pb.Value) (*uuid.UUID, error) {
 
 func digits(val uint64, digits int) string {
 	high := uint64(1) << (digits * 4)
-	str := strconv.FormatInt(int64(high | (val & (high - 1))), 16)
+	str := strconv.FormatInt(int64(high|(val&(high-1))), 16)
 	return str[1:]
 }
 
@@ -46,7 +46,7 @@ func ToInt(val *pb.Value) (int64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Int); ok {
 		return val.Int, nil
 	}
-	return 0,  errors.New("not an int")
+	return 0, errors.New("not an int")
 }
 
 func ToBigInt(val *pb.Value) (*big.Int, error) {
@@ -60,14 +60,14 @@ func ToSmallInt(val *pb.Value) (int64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Int); ok {
 		return val.Int, nil
 	}
-	return 0,  errors.New("not a smallint")
+	return 0, errors.New("not a smallint")
 }
 
 func ToTinyInt(val *pb.Value) (int64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Int); ok {
 		return val.Int, nil
 	}
-	return 0,  errors.New("not a tinyint")
+	return 0, errors.New("not a tinyint")
 }
 
 func ToBlob(val *pb.Value) ([]byte, error) {
@@ -96,21 +96,21 @@ func ToDouble(val *pb.Value) (float64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Double); ok {
 		return val.Double, nil
 	}
-	return 0,  errors.New("not a double")
+	return 0, errors.New("not a double")
 }
 
 func ToFloat(val *pb.Value) (float32, error) {
 	if val, ok := val.GetInner().(*pb.Value_Float); ok {
 		return val.Float, nil
 	}
-	return 0,  errors.New("not a float")
+	return 0, errors.New("not a float")
 }
 
 func ToInet(val *pb.Value) ([]byte, error) {
 	if val, ok := val.GetInner().(*pb.Value_Bytes); ok {
 		return val.Bytes, nil
 	}
-	return nil,  errors.New("not an inet")
+	return nil, errors.New("not an inet")
 }
 
 func ToVarInt(val *pb.Value) (uint64, error) {
@@ -125,49 +125,49 @@ func ToDate(val *pb.Value) (uint32, error) {
 	if val, ok := val.GetInner().(*pb.Value_Date); ok {
 		return val.Date, nil
 	}
-	return 0,  errors.New("not a date")
+	return 0, errors.New("not a date")
 }
 
 func ToTimestamp(val *pb.Value) (int64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Int); ok {
 		return val.Int, nil
 	}
-	return 0,  errors.New("not a timestamp")
+	return 0, errors.New("not a timestamp")
 }
 
 func ToTime(val *pb.Value) (uint64, error) {
 	if val, ok := val.GetInner().(*pb.Value_Time); ok {
 		return val.Time, nil
 	}
-	return 0,  errors.New("not a time")
+	return 0, errors.New("not a time")
 }
 
 func ToList(val *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
 	if _, ok := val.GetInner().(*pb.Value_Collection); ok {
 		return translateType(val, spec)
 	}
-	return nil,  errors.New("not a list")
+	return nil, errors.New("not a list")
 }
 
 func ToMap(val *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
 	if _, ok := val.GetInner().(*pb.Value_Collection); ok {
 		return translateType(val, spec)
 	}
-	return nil,  errors.New("not a map")
+	return nil, errors.New("not a map")
 }
 
 func ToSet(val *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
 	if _, ok := val.GetInner().(*pb.Value_Collection); ok {
 		return translateType(val, spec)
 	}
-	return nil,  errors.New("not a set")
+	return nil, errors.New("not a set")
 }
 
 func ToTuple(val *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
 	if _, ok := val.GetInner().(*pb.Value_Collection); ok {
 		return translateType(val, spec)
 	}
-	return nil,  errors.New("not a tuple")
+	return nil, errors.New("not a tuple")
 }
 
 func translateType(value *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
@@ -175,9 +175,9 @@ func translateType(value *pb.Value, spec *pb.TypeSpec) (interface{}, error) {
 	case *pb.TypeSpec_Basic_:
 		return translateBasicType(value, spec)
 	case *pb.TypeSpec_Map_:
-		elements := make( map[interface{}]interface{})
+		elements := make(map[interface{}]interface{})
 
-		for i := 0; i < len(value.GetCollection().Elements)-1; i+=2 {
+		for i := 0; i < len(value.GetCollection().Elements)-1; i += 2 {
 			key, err := translateType(value.GetCollection().Elements[i], spec.GetMap().Key)
 			if err != nil {
 				return nil, err

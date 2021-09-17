@@ -26,8 +26,8 @@ func NewStargateClientWithConn(conn grpc.ClientConnInterface) (*StargateClient, 
 	client := pb.NewStargateClient(conn)
 
 	return &StargateClient{
-		client:       client,
-		conn:         conn,
+		client: client,
+		conn:   conn,
 	}, nil
 }
 
