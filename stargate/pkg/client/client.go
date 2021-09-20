@@ -7,7 +7,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/stargate/stargate-grpc-go-client/stargate/pkg/proto"
@@ -16,10 +15,8 @@ import (
 )
 
 type StargateClient struct {
-	client       pb.StargateClient
-	conn         grpc.ClientConnInterface
-	authProvider credentials.PerRPCCredentials
-	token        string
+	client pb.StargateClient
+	conn   grpc.ClientConnInterface
 }
 
 func NewStargateClientWithConn(conn grpc.ClientConnInterface) (*StargateClient, error) {
