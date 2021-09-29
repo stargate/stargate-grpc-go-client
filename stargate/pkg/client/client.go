@@ -16,7 +16,6 @@ import (
 
 type StargateClient struct {
 	client pb.StargateClient
-	conn   grpc.ClientConnInterface
 }
 
 func NewStargateClientWithConn(conn grpc.ClientConnInterface) (*StargateClient, error) {
@@ -24,7 +23,6 @@ func NewStargateClientWithConn(conn grpc.ClientConnInterface) (*StargateClient, 
 
 	return &StargateClient{
 		client: client,
-		conn:   conn,
 	}, nil
 }
 
