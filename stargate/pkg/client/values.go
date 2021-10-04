@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"math/big"
-	"strconv"
 
 	"github.com/google/uuid"
 	pb "github.com/stargate/stargate-grpc-go-client/stargate/pkg/proto"
@@ -13,12 +12,8 @@ import (
 
 func ToUUID(val *pb.Value) (*uuid.UUID, error) {
 	if val, ok := val.GetInner().(*pb.Value_Uuid); ok {
-		mostSigBits := val.Uuid.Msb
-		leastSigBits := val.Uuid.Lsb
-		uuidStr := digits(mostSigBits>>int64(32), 8) + "-" + digits(mostSigBits>>int64(16), 4) + "-" + digits(mostSigBits, 4) + "-" + digits(leastSigBits>>int64(48), 4) + "-" + digits(leastSigBits, 12)
-
-		parsedUUID := uuid.MustParse(uuidStr)
-		return &parsedUUID, nil
+		parsedUUID, err := uuid.FromBytes(val.Uuid.GetValue())
+		return &parsedUUID, err
 	}
 
 	return nil, errors.New("not a uuid")
@@ -26,12 +21,6 @@ func ToUUID(val *pb.Value) (*uuid.UUID, error) {
 
 func ToTimeUUID(val *pb.Value) (*uuid.UUID, error) {
 	return ToUUID(val)
-}
-
-func digits(val uint64, digits int) string {
-	high := uint64(1) << (digits * 4)
-	str := strconv.FormatInt(int64(high|(val&(high-1))), 16)
-	return str[1:]
 }
 
 func ToString(val *pb.Value) (string, error) {
@@ -107,8 +96,8 @@ func ToFloat(val *pb.Value) (float32, error) {
 }
 
 func ToInet(val *pb.Value) ([]byte, error) {
-	if val, ok := val.GetInner().(*pb.Value_Bytes); ok {
-		return val.Bytes, nil
+	if val, ok := val.GetInner().(*pb.Value_Inet); ok {
+		return val.Inet.Value, nil
 	}
 	return nil, errors.New("not an inet")
 }

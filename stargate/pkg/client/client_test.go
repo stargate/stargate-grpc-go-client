@@ -112,7 +112,6 @@ func TestExecuteQuery(t *testing.T) {
 
 	var pagingState []byte
 	assert.Equal(t, pagingState, result.PagingState.GetValue())
-	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
 func TestExecuteQuery_AllNumeric(t *testing.T) {
@@ -149,7 +148,6 @@ func TestExecuteQuery_AllNumeric(t *testing.T) {
 
 	var pagingState []byte
 	assert.Equal(t, pagingState, result.PagingState.GetValue())
-	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
 func TestExecuteQuery_FullCRUD(t *testing.T) {
