@@ -40,7 +40,7 @@ func init() {
 	waitStrategy := wait.ForHTTP("/checker/readiness").WithPort("8084/tcp").WithStartupTimeout(90 * time.Second)
 
 	req := testcontainers.ContainerRequest{
-		Image: "stargateio/stargate-3_11:v1.0.32",
+		Image: "stargateio/stargate-3_11:v1.0.35",
 		Env: map[string]string{
 			"CLUSTER_NAME":    "test",
 			"CLUSTER_VERSION": "3.11",
