@@ -47,7 +47,7 @@ func init() {
 			"DEVELOPER_MODE":  "true",
 			"ENABLE_AUTH":     "true",
 		},
-		ExposedPorts: []string{"8090/tcp", "8081/tcp", "8084/tcp"},
+		ExposedPorts: []string{"8090/tcp", "8081/tcp", "8084/tcp", "9042/tcp"},
 		WaitingFor:   waitStrategy,
 	}
 	stargateContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -79,21 +79,12 @@ func init() {
 	}
 }
 
-func TestNewQuery(t *testing.T) {
+func TestExecuteQuery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
-	if err != nil {
-		assert.FailNow(t, "Should not have returned error", err)
-	}
-
-	stargateClient, err := NewStargateClientWithConn(conn)
-	if err != nil {
-		assert.FailNow(t, "Should not have returned error", err)
-	}
+	stargateClient := createClient(t)
 
 	query := &pb.Query{
 		Cql: "select * from system.local",
@@ -124,19 +115,12 @@ func TestNewQuery(t *testing.T) {
 	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
-func TestNewQuery_AllNumeric(t *testing.T) {
+func TestExecuteQuery_AllNumeric(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
-	require.NoError(t, err)
-
-	stargateClient, err := NewStargateClientWithConn(conn)
-	if err != nil {
-		assert.FailNow(t, "Should not have returned error", err)
-	}
+	stargateClient := createClient(t)
 
 	query := &pb.Query{
 		Cql: "select gc_grace_seconds, default_time_to_live, max_index_interval, memtable_flush_period_in_ms, min_index_interval, read_repair_chance,crc_check_chance,dclocal_read_repair_chance,bloom_filter_fp_chance from system_schema.tables",
@@ -168,17 +152,12 @@ func TestNewQuery_AllNumeric(t *testing.T) {
 	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
-func TestNewQuery_FullCRUD(t *testing.T) {
+func TestExecuteQuery_FullCRUD(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
-	require.NoError(t, err)
-
-	stargateClient, err := NewStargateClientWithConn(conn)
-	require.NoError(t, err)
+	stargateClient := createClient(t)
 
 	var unsetResultSet *pb.Payload
 
@@ -413,22 +392,14 @@ func TestNewQuery_FullCRUD(t *testing.T) {
 	str, err = ToString(result.Rows[0].Values[1])
 	require.NoError(t, err)
 	assert.Equal(t, "echo", str)
-
 }
 
-func TestNewQuery_ParameterizedQuery(t *testing.T) {
+func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
-	require.NoError(t, err)
-
-	stargateClient, err := NewStargateClientWithConn(conn)
-	if err != nil {
-		assert.FailNow(t, "Should not have returned error", err)
-	}
+	stargateClient := createClient(t)
 
 	// read from table
 	any, err := anypb.New(
@@ -467,4 +438,135 @@ func TestNewQuery_ParameterizedQuery(t *testing.T) {
 	strVal, err := ToString(result.Rows[0].Values[0])
 	require.NoError(t, err)
 	assert.Equal(t, "system", strVal)
+}
+
+
+func TestExecuteBatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient := createClient(t)
+
+	var unsetResultSet *pb.Payload
+
+	// create keyspace
+	query := &pb.Query{
+		Cql: "CREATE KEYSPACE IF NOT EXISTS ks1 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
+	}
+	response, err := stargateClient.ExecuteQuery(query)
+	require.NoError(t, err)
+
+	assert.Equal(t, unsetResultSet, response.GetResultSet())
+
+	// add table to keyspace
+	cql := `
+   CREATE TABLE IF NOT EXISTS ks1.tbl2 (
+     key text PRIMARY KEY,
+     value text
+   );`
+	query = &pb.Query{
+		Cql: cql,
+	}
+	response, err = stargateClient.ExecuteQuery(query)
+	require.NoError(t, err)
+
+	assert.Equal(t, unsetResultSet, response.GetResultSet())
+
+
+	batch := &pb.Batch{
+		Type:       pb.Batch_LOGGED,
+		Queries:    []*pb.BatchQuery{
+			{
+				Cql: "insert into ks1.tbl2 (key, value) values ('a', 'alpha');",
+			},
+			{
+				Cql: "insert into ks1.tbl2 (key, value) values ('b', 'bravo');",
+			},
+		},
+	}
+
+	response, err = stargateClient.ExecuteBatch(batch)
+	require.NoError(t, err)
+
+	assert.Equal(t, unsetResultSet, response.GetResultSet())
+
+	// read from table
+	query = &pb.Query{
+		Cql: "select * from ks1.tbl2",
+	}
+	response, err = stargateClient.ExecuteQuery(query)
+	require.NoError(t, err)
+
+	result, err := ToResultSet(response)
+	require.NoError(t, err)
+
+	key, err := ToString(result.Rows[0].Values[0])
+	require.NoError(t, err)
+	assert.Equal(t, "a", key)
+
+	value, err := ToString(result.Rows[0].Values[1])
+	require.NoError(t, err)
+	assert.Equal(t, "alpha", value)
+
+	key, err = ToString(result.Rows[1].Values[0])
+	require.NoError(t, err)
+	assert.Equal(t, "b", key)
+
+	value, err = ToString(result.Rows[1].Values[1])
+	require.NoError(t, err)
+	assert.Equal(t, "bravo", value)
+
+	// update table
+	batch = &pb.Batch{
+		Type:       pb.Batch_LOGGED,
+		Queries:    []*pb.BatchQuery{
+			{
+				Cql: "insert into ks1.tbl2 (key, value) values ('c', 'charlie');",
+			},
+			{
+				Cql: "update ks1.tbl2 set value = 'bagel' where key = 'b';",
+			},
+		},
+	}
+	response, err = stargateClient.ExecuteBatch(batch)
+	require.NoError(t, err)
+
+	assert.Equal(t, unsetResultSet, response.GetResultSet())
+
+	// read update from table
+	query = &pb.Query{
+		Cql: "select * from ks1.tbl2 where key in ('b', 'c');",
+	}
+	response, err = stargateClient.ExecuteQuery(query)
+	require.NoError(t, err)
+
+	result, err = ToResultSet(response)
+	require.NoError(t, err)
+
+	key, err = ToString(result.Rows[0].Values[0])
+	require.NoError(t, err)
+	assert.Equal(t, "b", key)
+
+	value, err = ToString(result.Rows[0].Values[1])
+	require.NoError(t, err)
+	assert.Equal(t, "bagel", value)
+
+	key, err = ToString(result.Rows[1].Values[0])
+	require.NoError(t, err)
+	assert.Equal(t, "c", key)
+
+	value, err = ToString(result.Rows[1].Values[1])
+	require.NoError(t, err)
+	assert.Equal(t, "charlie", value)
+}
+
+func createClient(t *testing.T) *StargateClient {
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
+	require.NoError(t, err)
+
+	stargateClient, err := NewStargateClientWithConn(conn)
+	require.NoError(t, err)
+	return stargateClient
 }
