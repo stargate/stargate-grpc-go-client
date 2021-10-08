@@ -88,6 +88,35 @@ query := &pb.Query{
 response, err := stargateClient.ExecuteQuery(query)
 ```
 
+Data definition (DDL) queries are supported in the same manner
+
+```go
+// Create a new keyspace
+createKeyspaceStatement := &pb.Query{
+    Cql: "CREATE KEYSPACE IF NOT EXISTS ks1 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
+}
+_, err = stargateClient.ExecuteQuery(createKeyspaceStatement)
+if err != nil {
+    return err
+}
+	
+// Create a new table
+createTableStatement := `
+   CREATE TABLE IF NOT EXISTS ks1.tbl2 (
+     key text PRIMARY KEY,
+     value text
+   );`
+createTableQuery := &pb.Query{
+	Cql: createTableStatement,
+}
+
+_, err = stargateClient.ExecuteQuery(createTableQuery)
+if err != nil {
+    return err
+}
+```
+
+
 Parameterized queries are also supported
 
 ```go
@@ -142,24 +171,9 @@ response, err := stargateClient.ExecuteBatch(batch)
 ### Processing the result set
 
 After executing a query a response will be returned containing rows for a SELECT statement, otherwise the returned payload
-will be unset. A convenience function is provided to help transform this response into a result set that's easier to work with.
+will be unset. The convenience function `ToResultSet()` is provided to help transform this response into a ResultSet that's easier to work with.
 
 ```go
-// Create a new table
-createTableStatement := `
-   CREATE TABLE IF NOT EXISTS ks1.tbl2 (
-     key text PRIMARY KEY,
-     value text
-   );`
-createTableQuery := &pb.Query{
-	Cql: createTableStatement,
-}
-
-_, err = stargateClient.ExecuteQuery(createTableQuery)
-if err != nil {
-    return err
-}
-
 // Insert a record into the table
 _, err = stargateClient.ExecuteQuery(&pb.Query{
     Cql: "insert into ks1.tbl2 (key, value) values ('a', 'alpha');",
