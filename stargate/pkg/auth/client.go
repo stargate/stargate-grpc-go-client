@@ -33,6 +33,9 @@ type authRequest struct {
 	Password string `json:"password"`
 }
 
+// NewTableBasedTokenProvider creates a token provider intended to be used with Stargate's table based token authentication mechanism. This
+// function will generate a token by making a request to the provided Stargate auth-api URL and populating the `x-cassandra-token` header
+// with the returned token.
 func NewTableBasedTokenProvider(serviceURL, username, password string) credentials.PerRPCCredentials {
 	return tableBasedTokenProvider{
 		client:   getClient(serviceURL),
