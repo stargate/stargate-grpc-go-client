@@ -150,7 +150,7 @@ response, err := stargateClient.ExecuteQuery(query)
 ```
 
 If you would like to use a [batch statement](https://cassandra.apache.org/doc/latest/cassandra/cql/dml.html#batch_statement),
-the client also provides an `executeBatch()` function for this purpose
+the client also provides an `ExecuteBatch()` function for this purpose
 
 ```go
 batch := &pb.Batch{
