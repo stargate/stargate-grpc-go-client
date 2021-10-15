@@ -7,7 +7,6 @@ via gRPC.
     - [Connecting](#connecting)
     - [Querying](#querying)
     - [Processing the result set](#processing-the-result-set)
-- [Running tests](#running-tests)
 - [Issue Management](#issue-management)
   
 ## Quick start guide
@@ -209,16 +208,6 @@ fmt.Printf("key = %s\n", key)
 
 Notice that in the above the `ToString` function is used to transform the value into a native string. Additional functions
 also exist for other types such as `int`, `map`, and `blob`. The full list can be found in [values.go](stargate/pkg/client/values.go).
-
-## Running tests
-
-The tests for this project can be run from the root using the following command (addition of `-tags integration` will also
-run the integration tests).
-
-```shell
-go test ./... -v -tags integration
-```
-
 
 ## Issue Management
 
