@@ -61,8 +61,13 @@ func main() {
 	grpcEndpoint := "localhost:8090"
 	authEndpoint := "localhost:8081"
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
+    conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+      grpc.WithPerRPCCredentials(
+        auth.NewTableBasedTokenProvider(
+          fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+        ),
+      ),
+    )
 	if err != nil {
 		fmt.Printf("error dialing connection %v", err)
 		os.Exit(1)
@@ -192,7 +197,8 @@ if err != nil {
 
 result, err := ToResultSet(response)
 
-// We're calling ToString() here because we know the type being returned. If this was something like a UUID we would use ToUUID().
+// We're calling ToString() here because we know the type being returned. If this was
+// something like a UUID we would use ToUUID().
 key, err := ToString(result.Rows[0].Values[0])
 if err != nil {
     return err

@@ -563,7 +563,12 @@ func TestExecuteBatch(t *testing.T) {
 
 func createClient(t *testing.T) *StargateClient {
 	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
+		grpc.WithPerRPCCredentials(
+			auth.NewTableBasedTokenProvider(
+				fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+				),
+			),
+	)
 	require.NoError(t, err)
 
 	stargateClient, err := NewStargateClientWithConn(conn)
