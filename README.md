@@ -82,7 +82,7 @@ A simple query can be performed by passing a CQL query to the client
 
 ```go
 query := &pb.Query{
-    Cql: "select cluster_name from system.local",
+    Cql: "SELECT cluster_name FROM system.local",
 }
 
 response, err := stargateClient.ExecuteQuery(query)
@@ -136,7 +136,7 @@ if err != nil {
 }
 
 query := &pb.Query{
-    Cql: "select * from system_schema.keyspaces where keyspace_name = ?",
+    Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
     Values: &pb.Payload{
         Type: pb.Payload_CQL,
         Data: any,
@@ -157,10 +157,10 @@ batch := &pb.Batch{
     Type:       pb.Batch_LOGGED,
     Queries:    []*pb.BatchQuery{
         {
-            Cql: "insert into ks1.tbl2 (key, value) values ('a', 'alpha');",
+            Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('a', 'alpha');",
         },
         {
-            Cql: "insert into ks1.tbl2 (key, value) values ('b', 'bravo');",
+            Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('b', 'bravo');",
         },
     },
 }
@@ -176,7 +176,7 @@ will be unset. The convenience function `ToResultSet()` is provided to help tran
 ```go
 // Insert a record into the table
 _, err = stargateClient.ExecuteQuery(&pb.Query{
-    Cql: "insert into ks1.tbl2 (key, value) values ('a', 'alpha');",
+    Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('a', 'alpha');",
 })
 if err != nil {
     return err
@@ -184,7 +184,7 @@ if err != nil {
 
 // Read the data back out
 response, err := stargateClient.ExecuteQuery(&pb.Query{
-    Cql: "select key, value from ks1.tbl2",
+    Cql: "SELECT key, value FROM ks1.tbl2",
 })
 if err != nil {
 	return err
