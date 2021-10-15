@@ -47,19 +47,19 @@ with the default credentials of `cassandra/cassandra`. For more information rega
 package main
 
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
 
-	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
-	"github.com/stargate/stargate-grpc-go-client/stargate/pkg/client"
-	"google.golang.org/grpc"
+    "github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
+    "github.com/stargate/stargate-grpc-go-client/stargate/pkg/client"
+    "google.golang.org/grpc"
 )
 
 var stargateClient *client.StargateClient
 
 func main() {
-	grpcEndpoint := "localhost:8090"
-	authEndpoint := "localhost:8081"
+    grpcEndpoint := "localhost:8090"
+    authEndpoint := "localhost:8081"
 
     conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
       grpc.WithPerRPCCredentials(
@@ -68,16 +68,16 @@ func main() {
         ),
       ),
     )
-	if err != nil {
-		fmt.Printf("error dialing connection %v", err)
-		os.Exit(1)
-	}
+    if err != nil {
+        fmt.Printf("error dialing connection %v", err)
+        os.Exit(1)
+    }
 
-	stargateClient, err = client.NewStargateClientWithConn(conn)
-	if err != nil {
-		fmt.Printf("error creating client %v", err)
-		os.Exit(1)
-	}
+    stargateClient, err = client.NewStargateClientWithConn(conn)
+    if err != nil {
+        fmt.Printf("error creating client %v", err)
+        os.Exit(1)
+    }
 }
 ```
 
@@ -104,7 +104,7 @@ _, err = stargateClient.ExecuteQuery(createKeyspaceStatement)
 if err != nil {
     return err
 }
-	
+
 // Create a new table
 createTableStatement := `
    CREATE TABLE IF NOT EXISTS ks1.tbl2 (
@@ -112,7 +112,7 @@ createTableStatement := `
      value text
    );`
 createTableQuery := &pb.Query{
-	Cql: createTableStatement,
+    Cql: createTableStatement,
 }
 
 _, err = stargateClient.ExecuteQuery(createTableQuery)
@@ -137,7 +137,7 @@ any, err := anypb.New(
     },
 )
 if err != nil {
-	return err
+    return err
 }
 
 query := &pb.Query{
@@ -192,7 +192,7 @@ response, err := stargateClient.ExecuteQuery(&pb.Query{
     Cql: "SELECT key, value FROM ks1.tbl2",
 })
 if err != nil {
-	return err
+    return err
 }
 
 result, err := ToResultSet(response)
