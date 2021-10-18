@@ -7,14 +7,14 @@ import (
 )
 
 type staticTokenProvider struct {
-	token string
+	token                    string
 	requireTransportSecurity bool
 }
 
 // NewStaticTokenProvider will take the provided token and use it to populate the `x-cassandra-token` header for all requests.
 func NewStaticTokenProvider(token string) credentials.PerRPCCredentials {
 	return staticTokenProvider{
-		token: token,
+		token:                    token,
 		requireTransportSecurity: true,
 	}
 }
@@ -23,7 +23,7 @@ func NewStaticTokenProvider(token string) credentials.PerRPCCredentials {
 // to false for environments where transport security it not in use.
 func NewStaticTokenProviderUnsafe(token string) credentials.PerRPCCredentials {
 	return staticTokenProvider{
-		token: token,
+		token:                    token,
 		requireTransportSecurity: false,
 	}
 }

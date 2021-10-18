@@ -14,9 +14,9 @@ import (
 )
 
 type tableBasedTokenProvider struct {
-	client   *client
-	username string
-	password string
+	client                   *client
+	username                 string
+	password                 string
 	requireTransportSecurity bool
 }
 
@@ -39,9 +39,9 @@ type authRequest struct {
 // with the returned token.
 func NewTableBasedTokenProvider(serviceURL, username, password string) credentials.PerRPCCredentials {
 	return tableBasedTokenProvider{
-		client:   getClient(serviceURL),
-		username: username,
-		password: password,
+		client:                   getClient(serviceURL),
+		username:                 username,
+		password:                 password,
 		requireTransportSecurity: true,
 	}
 }
@@ -50,9 +50,9 @@ func NewTableBasedTokenProvider(serviceURL, username, password string) credentia
 // to false for environments where transport security it not in use.
 func NewTableBasedTokenProviderUnsafe(serviceURL, username, password string) credentials.PerRPCCredentials {
 	return tableBasedTokenProvider{
-		client:   getClient(serviceURL),
-		username: username,
-		password: password,
+		client:                   getClient(serviceURL),
+		username:                 username,
+		password:                 password,
 		requireTransportSecurity: false,
 	}
 }
