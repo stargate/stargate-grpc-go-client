@@ -598,7 +598,7 @@ func TestExecuteQuery_UsingStaticToken(t *testing.T) {
 
 func createClient(t *testing.T) *StargateClient {
 	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProvider(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
+		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProviderUnsafe(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
 	require.NoError(t, err)
 
 	stargateClient, err := NewStargateClientWithConn(conn)
@@ -610,7 +610,7 @@ func createClientWithStaticToken(t *testing.T) *StargateClient {
 	token, err := getAuthToken()
 	require.NoError(t, err)
 
-	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithPerRPCCredentials(auth.NewStaticTokenProvider(token)))
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithPerRPCCredentials(auth.NewStaticTokenProviderUnsafe(token)))
 	require.NoError(t, err)
 
 	stargateClient, err := NewStargateClientWithConn(conn)

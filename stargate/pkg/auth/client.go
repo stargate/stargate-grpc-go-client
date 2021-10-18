@@ -17,6 +17,7 @@ type tableBasedTokenProvider struct {
 	client   *client
 	username string
 	password string
+	requireTransportSecurity bool
 }
 
 type client struct {
@@ -41,11 +42,23 @@ func NewTableBasedTokenProvider(serviceURL, username, password string) credentia
 		client:   getClient(serviceURL),
 		username: username,
 		password: password,
+		requireTransportSecurity: true,
+	}
+}
+
+// NewTableBasedTokenProviderUnsafe is identical to NewTableBasedTokenProvider except that it will set requireTransportSecurity
+// to false for environments where transport security it not in use.
+func NewTableBasedTokenProviderUnsafe(serviceURL, username, password string) credentials.PerRPCCredentials {
+	return tableBasedTokenProvider{
+		client:   getClient(serviceURL),
+		username: username,
+		password: password,
+		requireTransportSecurity: false,
 	}
 }
 
 func (t tableBasedTokenProvider) RequireTransportSecurity() bool {
-	return false
+	return t.requireTransportSecurity
 }
 
 func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
