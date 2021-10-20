@@ -5,9 +5,13 @@ package client
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,7 +44,7 @@ func init() {
 	waitStrategy := wait.ForHTTP("/checker/readiness").WithPort("8084/tcp").WithStartupTimeout(90 * time.Second)
 
 	req := testcontainers.ContainerRequest{
-		Image: "stargateio/stargate-3_11:v1.0.32",
+		Image: "stargateio/stargate-3_11:v1.0.35",
 		Env: map[string]string{
 			"CLUSTER_NAME":    "test",
 			"CLUSTER_VERSION": "3.11",
@@ -112,7 +116,6 @@ func TestExecuteQuery(t *testing.T) {
 
 	var pagingState []byte
 	assert.Equal(t, pagingState, result.PagingState.GetValue())
-	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
 func TestExecuteQuery_AllNumeric(t *testing.T) {
@@ -149,7 +152,6 @@ func TestExecuteQuery_AllNumeric(t *testing.T) {
 
 	var pagingState []byte
 	assert.Equal(t, pagingState, result.PagingState.GetValue())
-	assert.Equal(t, int32(0), result.PageSize.GetValue())
 }
 
 func TestExecuteQuery_FullCRUD(t *testing.T) {
@@ -440,7 +442,6 @@ func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 	assert.Equal(t, "system", strVal)
 }
 
-
 func TestExecuteBatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -473,10 +474,9 @@ func TestExecuteBatch(t *testing.T) {
 
 	assert.Equal(t, unsetResultSet, response.GetResultSet())
 
-
 	batch := &pb.Batch{
-		Type:       pb.Batch_LOGGED,
-		Queries:    []*pb.BatchQuery{
+		Type: pb.Batch_LOGGED,
+		Queries: []*pb.BatchQuery{
 			{
 				Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('a', 'alpha');",
 			},
@@ -519,8 +519,8 @@ func TestExecuteBatch(t *testing.T) {
 
 	// update table
 	batch = &pb.Batch{
-		Type:       pb.Batch_LOGGED,
-		Queries:    []*pb.BatchQuery{
+		Type: pb.Batch_LOGGED,
+		Queries: []*pb.BatchQuery{
 			{
 				Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('c', 'charlie');",
 			},
@@ -561,6 +561,41 @@ func TestExecuteBatch(t *testing.T) {
 	assert.Equal(t, "charlie", value)
 }
 
+func TestExecuteQuery_UsingStaticToken(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	stargateClient := createClientWithStaticToken(t)
+
+	query := &pb.Query{
+		Cql: "select * from system.local",
+	}
+	response, err := stargateClient.ExecuteQuery(query)
+	if err != nil {
+		assert.FailNow(t, "Should not have returned error", err)
+	}
+
+	result, _ := ToResultSet(response)
+
+	assert.Equal(t, 18, len(result.Columns))
+	assert.Equal(t, &pb.ColumnSpec{
+		Type: &pb.TypeSpec{
+			Spec: &pb.TypeSpec_Basic_{Basic: 13},
+		},
+		Name: "key",
+	}, result.Columns[0])
+	assert.Equal(t, 1, len(result.Rows))
+	assert.Equal(t, 18, len(result.Rows[0].Values))
+
+	strVal, err := ToString(result.Rows[0].Values[0])
+	require.NoError(t, err)
+	assert.Equal(t, "local", strVal)
+
+	var pagingState []byte
+	assert.Equal(t, pagingState, result.PagingState.GetValue())
+}
+
 func createClient(t *testing.T) *StargateClient {
 	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
 		grpc.WithPerRPCCredentials(
@@ -574,4 +609,53 @@ func createClient(t *testing.T) *StargateClient {
 	stargateClient, err := NewStargateClientWithConn(conn)
 	require.NoError(t, err)
 	return stargateClient
+}
+
+func createClientWithStaticToken(t *testing.T) *StargateClient {
+	token, err := getAuthToken()
+	require.NoError(t, err)
+
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithPerRPCCredentials(auth.NewStaticTokenProviderUnsafe(token)))
+	require.NoError(t, err)
+
+	stargateClient, err := NewStargateClientWithConn(conn)
+	require.NoError(t, err)
+	return stargateClient
+}
+
+func getAuthToken() (string, error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, fmt.Sprintf("http://%s/v1/auth", authEndpoint), strings.NewReader("{\"username\": \"cassandra\",\"password\": \"cassandra\"}"))
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %v", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	response, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error calling auth service: %v", err)
+	}
+
+	defer func() {
+		err := response.Body.Close()
+		if err != nil {
+			log.Warnf("unable to close response body: %v", err)
+		}
+	}()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading response body: %v", err)
+	}
+
+	var result map[string]string
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", fmt.Errorf("error unmarshalling response body: %v", err)
+	}
+
+	return result["authToken"], nil
 }
