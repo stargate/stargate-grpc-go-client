@@ -14,9 +14,10 @@ import (
 )
 
 type tableBasedTokenProvider struct {
-	client   *client
-	username string
-	password string
+	client                   *client
+	username                 string
+	password                 string
+	requireTransportSecurity bool
 }
 
 type client struct {
@@ -33,16 +34,31 @@ type authRequest struct {
 	Password string `json:"password"`
 }
 
+// NewTableBasedTokenProvider creates a token provider intended to be used with Stargate's table based token authentication mechanism. This
+// function will generate a token by making a request to the provided Stargate auth-api URL and populating the `x-cassandra-token` header
+// with the returned token.
 func NewTableBasedTokenProvider(serviceURL, username, password string) credentials.PerRPCCredentials {
 	return tableBasedTokenProvider{
-		client:   getClient(serviceURL),
-		username: username,
-		password: password,
+		client:                   getClient(serviceURL),
+		username:                 username,
+		password:                 password,
+		requireTransportSecurity: true,
+	}
+}
+
+// NewTableBasedTokenProviderUnsafe is identical to NewTableBasedTokenProvider except that it will set requireTransportSecurity
+// to false for environments where transport security it not in use.
+func NewTableBasedTokenProviderUnsafe(serviceURL, username, password string) credentials.PerRPCCredentials {
+	return tableBasedTokenProvider{
+		client:                   getClient(serviceURL),
+		username:                 username,
+		password:                 password,
+		requireTransportSecurity: false,
 	}
 }
 
 func (t tableBasedTokenProvider) RequireTransportSecurity() bool {
-	return false
+	return t.requireTransportSecurity
 }
 
 func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
