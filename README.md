@@ -11,7 +11,7 @@ via gRPC.
   
 ## Quick start guide
 
-To begin, you'll need to add the necessary dependency to your project
+To begin, you'll need to add the necessary dependency to your project:
 
 ```shell
 go get -u github.com/stargate/stargate-grpc-go-client
@@ -82,7 +82,7 @@ func main() {
 
 ### Querying
 
-A simple query can be performed by passing a CQL query to the client
+A simple query can be performed by passing a CQL query to the client:
 
 ```go
 query := &pb.Query{
@@ -92,7 +92,7 @@ query := &pb.Query{
 response, err := stargateClient.ExecuteQuery(query)
 ```
 
-Data definition (DDL) queries are supported in the same manner
+Data definition (DDL) queries are supported in the same manner:
 
 ```go
 // Create a new keyspace
@@ -121,7 +121,7 @@ if err != nil {
 ```
 
 
-Parameterized queries are also supported
+Parameterized queries are also supported:
 
 ```go
 any, err := anypb.New(
@@ -154,7 +154,7 @@ response, err := stargateClient.ExecuteQuery(query)
 ```
 
 If you would like to use a [batch statement](https://cassandra.apache.org/doc/latest/cassandra/cql/dml.html#batch_statement),
-the client also provides an `ExecuteBatch()` function for this purpose
+the client also provides an `ExecuteBatch()` function for this purpose:
 
 ```go
 batch := &pb.Batch{
@@ -175,7 +175,7 @@ response, err := stargateClient.ExecuteBatch(batch)
 ### Processing the result set
 
 After executing a query a response will be returned containing rows for a SELECT statement, otherwise the returned payload
-will be unset. The convenience function `ToResultSet()` is provided to help transform this response into a ResultSet that's easier to work with.
+will be unset. The convenience function `ToResultSet()` is provided to help transform this response into a ResultSet that's easier to work with:
 
 ```go
 // Insert a record into the table
