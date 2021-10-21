@@ -91,7 +91,7 @@ func TestExecuteQuery(t *testing.T) {
 	stargateClient := createClient(t)
 
 	query := &pb.Query{
-		Cql: "select * from system.local",
+		Cql: "SELECT * FROM system.local",
 	}
 	response, err := stargateClient.ExecuteQuery(query)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestExecuteQuery_AllNumeric(t *testing.T) {
 	stargateClient := createClient(t)
 
 	query := &pb.Query{
-		Cql: "select gc_grace_seconds, default_time_to_live, max_index_interval, memtable_flush_period_in_ms, min_index_interval, read_repair_chance,crc_check_chance,dclocal_read_repair_chance,bloom_filter_fp_chance from system_schema.tables",
+		Cql: "SELECT gc_grace_seconds, default_time_to_live, max_index_interval, memtable_flush_period_in_ms, min_index_interval, read_repair_chance,crc_check_chance,dclocal_read_repair_chance,bloom_filter_fp_chance FROM system_schema.tables",
 	}
 	response, err := stargateClient.ExecuteQuery(query)
 	if err != nil {
@@ -209,7 +209,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	// insert into table
 	cql = `
-	insert into ks1.tbl1 (
+	INSERT INTO ks1.tbl1 (
 		id, 
 		asciivalue,
 		textvalue,
@@ -233,7 +233,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 		listvalue,
 		setvalue,
 		tuplevalue
-	) values (
+	) VALUES (
 		f066f76d-5e96-4b52-8d8a-0f51387df76b,
 		'alpha', 
 		'bravo',
@@ -269,7 +269,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	// read from table
 	query = &pb.Query{
-		Cql: "select * from ks1.tbl1",
+		Cql: "SELECT * FROM ks1.tbl1",
 	}
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	// update table
 	query = &pb.Query{
-		Cql: "update ks1.tbl1 set asciivalue = 'echo' where id = f066f76d-5e96-4b52-8d8a-0f51387df76b;",
+		Cql: "update ks1.tbl1 set asciivalue = 'echo' WHERE id = f066f76d-5e96-4b52-8d8a-0f51387df76b;",
 	}
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	// read update from table
 	query = &pb.Query{
-		Cql: "select * from ks1.tbl1 where id = f066f76d-5e96-4b52-8d8a-0f51387df76b;",
+		Cql: "SELECT * FROM ks1.tbl1 WHERE id = f066f76d-5e96-4b52-8d8a-0f51387df76b;",
 	}
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
@@ -417,7 +417,7 @@ func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 	)
 	require.NoError(t, err)
 	query := &pb.Query{
-		Cql: "select * from system_schema.keyspaces where keyspace_name = ?",
+		Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
 		Values: &pb.Payload{
 			Type: pb.Payload_CQL,
 			Data: any,
@@ -478,10 +478,10 @@ func TestExecuteBatch(t *testing.T) {
 		Type: pb.Batch_LOGGED,
 		Queries: []*pb.BatchQuery{
 			{
-				Cql: "insert into ks1.tbl2 (key, value) values ('a', 'alpha');",
+				Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('a', 'alpha');",
 			},
 			{
-				Cql: "insert into ks1.tbl2 (key, value) values ('b', 'bravo');",
+				Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('b', 'bravo');",
 			},
 		},
 	}
@@ -493,7 +493,7 @@ func TestExecuteBatch(t *testing.T) {
 
 	// read from table
 	query = &pb.Query{
-		Cql: "select * from ks1.tbl2",
+		Cql: "SELECT * FROM ks1.tbl2",
 	}
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
@@ -522,10 +522,10 @@ func TestExecuteBatch(t *testing.T) {
 		Type: pb.Batch_LOGGED,
 		Queries: []*pb.BatchQuery{
 			{
-				Cql: "insert into ks1.tbl2 (key, value) values ('c', 'charlie');",
+				Cql: "INSERT INTO ks1.tbl2 (key, value) VALUES ('c', 'charlie');",
 			},
 			{
-				Cql: "update ks1.tbl2 set value = 'bagel' where key = 'b';",
+				Cql: "UPDATE ks1.tbl2 SET value = 'bagel' WHERE key = 'b';",
 			},
 		},
 	}
@@ -536,7 +536,7 @@ func TestExecuteBatch(t *testing.T) {
 
 	// read update from table
 	query = &pb.Query{
-		Cql: "select * from ks1.tbl2 where key in ('b', 'c');",
+		Cql: "SELECT * FROM ks1.tbl2 WHERE key in ('b', 'c');",
 	}
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
@@ -598,7 +598,12 @@ func TestExecuteQuery_UsingStaticToken(t *testing.T) {
 
 func createClient(t *testing.T) *StargateClient {
 	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(auth.NewTableBasedTokenProviderUnsafe(fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra")))
+		grpc.WithPerRPCCredentials(
+			auth.NewTableBasedTokenProvider(
+				fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+			),
+		),
+	)
 	require.NoError(t, err)
 
 	stargateClient, err := NewStargateClientWithConn(conn)
