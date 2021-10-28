@@ -25,7 +25,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/anypb"
 	"gopkg.in/inf.v0"
 )
 
@@ -44,7 +43,7 @@ func init() {
 	waitStrategy := wait.ForHTTP("/checker/readiness").WithPort("8084/tcp").WithStartupTimeout(90 * time.Second)
 
 	req := testcontainers.ContainerRequest{
-		Image: "stargateio/stargate-3_11:v1.0.35",
+		Image: "stargateio/stargate-3_11:v1.0.40",
 		Env: map[string]string{
 			"CLUSTER_NAME":    "test",
 			"CLUSTER_VERSION": "3.11",
@@ -161,7 +160,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	stargateClient := createClient(t)
 
-	var unsetResultSet *pb.Payload
+	var unsetResultSet *pb.ResultSet
 
 	// create keyspace
 	query := &pb.Query{
@@ -404,8 +403,9 @@ func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 	stargateClient := createClient(t)
 
 	// read from table
-	any, err := anypb.New(
-		&pb.Values{
+	query := &pb.Query{
+		Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
+		Values: &pb.Values{
 			Values: []*pb.Value{
 				{
 					Inner: &pb.Value_String_{
@@ -413,14 +413,6 @@ func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 					},
 				},
 			},
-		},
-	)
-	require.NoError(t, err)
-	query := &pb.Query{
-		Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
-		Values: &pb.Payload{
-			Type: pb.Payload_CQL,
-			Data: any,
 		},
 		Parameters: &pb.QueryParameters{
 			Tracing:      false,
@@ -449,7 +441,7 @@ func TestExecuteBatch(t *testing.T) {
 
 	stargateClient := createClient(t)
 
-	var unsetResultSet *pb.Payload
+	var unsetResultSet *pb.ResultSet
 
 	// create keyspace
 	query := &pb.Query{
@@ -599,7 +591,7 @@ func TestExecuteQuery_UsingStaticToken(t *testing.T) {
 func createClient(t *testing.T) *StargateClient {
 	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
 		grpc.WithPerRPCCredentials(
-			auth.NewTableBasedTokenProvider(
+			auth.NewTableBasedTokenProviderUnsafe(
 				fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
 			),
 		),

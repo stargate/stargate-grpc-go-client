@@ -62,7 +62,7 @@ func main() {
 
     conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
       grpc.WithPerRPCCredentials(
-        auth.NewTableBasedTokenProvider(
+        auth.NewTableBasedTokenProviderUnsafe(
           fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
         ),
       ),
@@ -78,6 +78,20 @@ func main() {
         os.Exit(1)
     }
 }
+```
+
+In a secure environment you'll dial the connection like this:
+
+```go
+config := &tls.Config{}
+conn, err := grpc.Dial(grpcEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(config)), 
+    grpc.WithBlock(),
+    grpc.WithPerRPCCredentials(
+        auth.NewTableBasedTokenProvider(
+          fmt.Sprintf("https://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+        ),
+    ),
+)
 ```
 
 ### Querying
@@ -141,9 +155,14 @@ if err != nil {
 
 query := &pb.Query{
     Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
-    Values: &pb.Payload{
-        Type: pb.Payload_CQL,
-        Data: any,
+    Values:  &pb.Values{
+        Values: []*pb.Value{
+            {
+                Inner: &pb.Value_String_{
+                    String_: "system",
+                },
+            },
+        },
     },
     Parameters: &pb.QueryParameters{
         Tracing:      false,
