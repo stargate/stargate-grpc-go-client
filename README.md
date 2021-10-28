@@ -62,7 +62,7 @@ func main() {
 
     conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
       grpc.WithPerRPCCredentials(
-        auth.NewTableBasedTokenProvider(
+        auth.NewTableBasedTokenProviderUnsafe(
           fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
         ),
       ),
@@ -78,6 +78,20 @@ func main() {
         os.Exit(1)
     }
 }
+```
+
+In a secure environment you'll dial the connection like this:
+
+```go
+config := &tls.Config{}
+conn, err := grpc.Dial(grpcEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(config)), 
+    grpc.WithBlock(),
+    grpc.WithPerRPCCredentials(
+        auth.NewTableBasedTokenProvider(
+          fmt.Sprintf("https://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+        ),
+    ),
+)
 ```
 
 ### Querying
@@ -124,8 +138,9 @@ if err != nil {
 Parameterized queries are also supported:
 
 ```go
-any, err := anypb.New(
-    &pb.Values{
+query := &pb.Query{
+    Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
+    Values:  &pb.Values{
         Values: []*pb.Value{
             {
                 Inner: &pb.Value_String_{
@@ -133,17 +148,6 @@ any, err := anypb.New(
                 },
             },
         },
-    },
-)
-if err != nil {
-    return err
-}
-
-query := &pb.Query{
-    Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
-    Values: &pb.Payload{
-        Type: pb.Payload_CQL,
-        Data: any,
     },
     Parameters: &pb.QueryParameters{
         Tracing:      false,
@@ -175,7 +179,7 @@ response, err := stargateClient.ExecuteBatch(batch)
 ### Processing the result set
 
 After executing a query a response will be returned containing rows for a SELECT statement, otherwise the returned payload
-will be unset. The convenience function `ToResultSet()` is provided to help transform this response into a ResultSet that's easier to work with:
+will be unset:
 
 ```go
 // Insert a record into the table
@@ -194,7 +198,7 @@ if err != nil {
     return err
 }
 
-result, err := ToResultSet(response)
+result := response.GetResultSet()
 
 // We're calling ToString() here because we know the type being returned. If this was
 // something like a UUID we would use ToUUID().
