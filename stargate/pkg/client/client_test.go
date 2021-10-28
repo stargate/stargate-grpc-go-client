@@ -161,8 +161,6 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 
 	stargateClient := createClient(t)
 
-	var unsetResultSet *pb.ResultSet
-
 	// create keyspace
 	query := &pb.Query{
 		Cql: "CREATE KEYSPACE IF NOT EXISTS ks1 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
@@ -170,7 +168,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err := stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// add table to keyspace
 	cql := `
@@ -205,7 +203,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// insert into table
 	cql = `
@@ -265,7 +263,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// read from table
 	query = &pb.Query{
@@ -379,7 +377,7 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// read update from table
 	query = &pb.Query{
@@ -442,8 +440,6 @@ func TestExecuteBatch(t *testing.T) {
 
 	stargateClient := createClient(t)
 
-	var unsetResultSet *pb.ResultSet
-
 	// create keyspace
 	query := &pb.Query{
 		Cql: "CREATE KEYSPACE IF NOT EXISTS ks1 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
@@ -451,7 +447,7 @@ func TestExecuteBatch(t *testing.T) {
 	response, err := stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// add table to keyspace
 	cql := `
@@ -465,7 +461,7 @@ func TestExecuteBatch(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	batch := &pb.Batch{
 		Type: pb.Batch_LOGGED,
@@ -482,7 +478,7 @@ func TestExecuteBatch(t *testing.T) {
 	response, err = stargateClient.ExecuteBatch(batch)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// read from table
 	query = &pb.Query{
@@ -525,7 +521,7 @@ func TestExecuteBatch(t *testing.T) {
 	response, err = stargateClient.ExecuteBatch(batch)
 	require.NoError(t, err)
 
-	assert.Equal(t, unsetResultSet, response.GetResultSet())
+	assert.Nil(t, response.GetResultSet())
 
 	// read update from table
 	query = &pb.Query{
