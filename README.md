@@ -138,21 +138,6 @@ if err != nil {
 Parameterized queries are also supported:
 
 ```go
-any, err := anypb.New(
-    &pb.Values{
-        Values: []*pb.Value{
-            {
-                Inner: &pb.Value_String_{
-                    String_: "system",
-                },
-            },
-        },
-    },
-)
-if err != nil {
-    return err
-}
-
 query := &pb.Query{
     Cql: "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?",
     Values:  &pb.Values{
@@ -194,7 +179,7 @@ response, err := stargateClient.ExecuteBatch(batch)
 ### Processing the result set
 
 After executing a query a response will be returned containing rows for a SELECT statement, otherwise the returned payload
-will be unset. The convenience function `ToResultSet()` is provided to help transform this response into a ResultSet that's easier to work with:
+will be unset:
 
 ```go
 // Insert a record into the table
@@ -213,7 +198,7 @@ if err != nil {
     return err
 }
 
-result, err := ToResultSet(response)
+result := response.GetResultSet()
 
 // We're calling ToString() here because we know the type being returned. If this was
 // something like a UUID we would use ToUUID().
