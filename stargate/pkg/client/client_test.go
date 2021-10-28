@@ -97,7 +97,8 @@ func TestExecuteQuery(t *testing.T) {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
 
-	result, _ := ToResultSet(response)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	assert.Equal(t, 18, len(result.Columns))
 	assert.Equal(t, &pb.ColumnSpec{
@@ -132,8 +133,8 @@ func TestExecuteQuery_AllNumeric(t *testing.T) {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
 
-	result, err := ToResultSet(response)
-	require.NoError(t, err)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	assert.Equal(t, 9, len(result.Columns))
 	assert.Equal(t, &pb.ColumnSpec{
@@ -273,8 +274,8 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	result, err := ToResultSet(response)
-	require.NoError(t, err)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	id, err := ToUUID(result.Rows[0].Values[0])
 	require.NoError(t, err)
@@ -387,8 +388,8 @@ func TestExecuteQuery_FullCRUD(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	result, err = ToResultSet(response)
-	require.NoError(t, err)
+	result = response.GetResultSet()
+	require.NotNil(t, result)
 
 	str, err = ToString(result.Rows[0].Values[1])
 	require.NoError(t, err)
@@ -424,8 +425,8 @@ func TestExecuteQuery_ParameterizedQuery(t *testing.T) {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
 
-	result, err := ToResultSet(response)
-	require.NoError(t, err)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	assert.Equal(t, 1, len(result.Rows))
 
@@ -490,8 +491,8 @@ func TestExecuteBatch(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	result, err := ToResultSet(response)
-	require.NoError(t, err)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	key, err := ToString(result.Rows[0].Values[0])
 	require.NoError(t, err)
@@ -533,8 +534,8 @@ func TestExecuteBatch(t *testing.T) {
 	response, err = stargateClient.ExecuteQuery(query)
 	require.NoError(t, err)
 
-	result, err = ToResultSet(response)
-	require.NoError(t, err)
+	result = response.GetResultSet()
+	require.NotNil(t, result)
 
 	key, err = ToString(result.Rows[0].Values[0])
 	require.NoError(t, err)
@@ -568,7 +569,8 @@ func TestExecuteQuery_UsingStaticToken(t *testing.T) {
 		assert.FailNow(t, "Should not have returned error", err)
 	}
 
-	result, _ := ToResultSet(response)
+	result := response.GetResultSet()
+	require.NotNil(t, result)
 
 	assert.Equal(t, 18, len(result.Columns))
 	assert.Equal(t, &pb.ColumnSpec{

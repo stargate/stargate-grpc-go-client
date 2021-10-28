@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -53,12 +52,4 @@ func (s *StargateClient) ExecuteBatchWithContext(batch *pb.Batch, ctx context.Co
 	}
 
 	return resp, nil
-}
-
-func ToResultSet(resp *pb.Response) (*pb.ResultSet, error) {
-	if resp.GetResultSet() == nil {
-		return nil, errors.New("no result set")
-	}
-
-	return resp.GetResultSet(), nil
 }
