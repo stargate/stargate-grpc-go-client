@@ -78,20 +78,17 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 	}
 	jsonString, err := json.Marshal(authReq)
 	if err != nil {
-		log.Errorf("error marshalling request: %v", err)
 		return "", fmt.Errorf("error marshalling request: %v", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.client.serviceURL, bytes.NewBuffer(jsonString))
 	if err != nil {
-		log.Errorf("error creating request: %v", err)
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
 	response, err := t.client.httpClient.Do(req)
 	if err != nil {
-		log.Errorf("error calling auth service: %v", err)
 		return "", fmt.Errorf("error calling auth service: %v", err)
 	}
 
@@ -104,14 +101,12 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Errorf("error reading response body: %v", err)
 		return "", fmt.Errorf("error reading response body: %v", err)
 	}
 
 	ar := authResponse{}
 	err = json.Unmarshal(body, &ar)
 	if err != nil {
-		log.Errorf("error unmarshalling response body: %v", err)
 		return "", fmt.Errorf("error unmarshalling response body: %v", err)
 	}
 
