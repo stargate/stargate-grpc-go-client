@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -33,6 +36,11 @@ type authRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+var cacheEnabled = true
+var cachedToken string
+var cachedTokenExpiresAt time.Time
+var ccMaxAgeRegex, _ = regexp.Compile(`\d+`)
 
 // NewTableBasedTokenProvider creates a token provider intended to be used with Stargate's table based token authentication mechanism. This
 // function will generate a token by making a request to the provided Stargate auth-api URL and populating the `x-cassandra-token` header
@@ -70,8 +78,14 @@ func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...
 	return map[string]string{"x-cassandra-token": token}, nil
 }
 
-// TODO: [doug] Figure out how to cache
 func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
+	// If we have a cached token and it won't expire for at least 30 seconds, use it
+	if cacheEnabled &&
+		cachedToken != "" &&
+		cachedTokenExpiresAt.Add(-30*time.Second).After(time.Now().UTC()) {
+		return cachedToken, nil
+	}
+
 	authReq := authRequest{
 		Username: t.username,
 		Password: t.password,
@@ -110,7 +124,42 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("error unmarshalling response body: %v", err)
 	}
 
-	return ar.AuthToken, nil
+	// If the server asks, skip the cache.
+	if !cacheEnabled {
+		return ar.AuthToken, nil
+	}
+
+	// cache expiration default of 10min (arbitrary).
+	ccExpSec := 600
+
+	// Try to read the server's reported cache expiration, or no-cache (unlikely).
+	ccValue := response.Header.Get("Cache-Control")
+	if len(ccValue) > 0 {
+		for _, val := range strings.Split(ccValue, ",") {
+			if strings.Contains(val, "max-age") ||
+				strings.Contains(val, "s-maxage") {
+				res := ccMaxAgeRegex.Find([]byte(ccValue))
+				ccSec, ccErr := strconv.Atoi(string(res))
+				if ccErr == nil {
+					ccExpSec = ccSec
+				}
+				break
+			}
+			if strings.Contains(val, "no-cache") ||
+				strings.Contains(val, "no-store") {
+				cacheEnabled = false
+				return ar.AuthToken, nil
+			}
+		}
+	}
+
+	// Cache the token
+	cachedToken = ar.AuthToken
+
+	// Set expiration
+	cachedTokenExpiresAt = time.Now().UTC().Add(time.Second * time.Duration(ccExpSec))
+
+	return cachedToken, nil
 }
 
 func getClient(serviceURL string) *client {
