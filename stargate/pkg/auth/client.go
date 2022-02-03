@@ -17,6 +17,9 @@ import (
 )
 
 type tableBasedTokenProvider struct {
+	cacheEnabled             bool
+	token                    string
+	tokenExpiresAt           time.Time
 	client                   *client
 	username                 string
 	password                 string
@@ -37,16 +40,14 @@ type authRequest struct {
 	Password string `json:"password"`
 }
 
-var cacheEnabled = true
-var cachedToken string
-var cachedTokenExpiresAt time.Time
 var ccMaxAgeRegex, _ = regexp.Compile(`\d+`)
 
 // NewTableBasedTokenProvider creates a token provider intended to be used with Stargate's table based token authentication mechanism. This
 // function will generate a token by making a request to the provided Stargate auth-api URL and populating the `x-cassandra-token` header
 // with the returned token.
 func NewTableBasedTokenProvider(serviceURL, username, password string) credentials.PerRPCCredentials {
-	return tableBasedTokenProvider{
+	return &tableBasedTokenProvider{
+		cacheEnabled:             true,
 		client:                   getClient(serviceURL),
 		username:                 username,
 		password:                 password,
@@ -57,7 +58,8 @@ func NewTableBasedTokenProvider(serviceURL, username, password string) credentia
 // NewTableBasedTokenProviderUnsafe is identical to NewTableBasedTokenProvider except that it will set requireTransportSecurity
 // to false for environments where transport security it not in use.
 func NewTableBasedTokenProviderUnsafe(serviceURL, username, password string) credentials.PerRPCCredentials {
-	return tableBasedTokenProvider{
+	return &tableBasedTokenProvider{
+		cacheEnabled:             true,
 		client:                   getClient(serviceURL),
 		username:                 username,
 		password:                 password,
@@ -69,7 +71,7 @@ func (t tableBasedTokenProvider) RequireTransportSecurity() bool {
 	return t.requireTransportSecurity
 }
 
-func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func (t *tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	token, err := t.getToken(ctx)
 	if err != nil {
 		log.WithError(err).Error("Failed to get auth token")
@@ -78,12 +80,12 @@ func (t tableBasedTokenProvider) GetRequestMetadata(ctx context.Context, uri ...
 	return map[string]string{"x-cassandra-token": token}, nil
 }
 
-func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
+func (t *tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 	// If we have a cached token and it won't expire for at least 30 seconds, use it
-	if cacheEnabled &&
-		cachedToken != "" &&
-		cachedTokenExpiresAt.Add(-30*time.Second).After(time.Now().UTC()) {
-		return cachedToken, nil
+	if t.cacheEnabled &&
+		t.token != "" &&
+		t.tokenExpiresAt.Add(-30*time.Second).After(time.Now().UTC()) {
+		return t.token, nil
 	}
 
 	authReq := authRequest{
@@ -125,7 +127,7 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 	}
 
 	// If the server asks, skip the cache.
-	if !cacheEnabled {
+	if !t.cacheEnabled {
 		return ar.AuthToken, nil
 	}
 
@@ -147,19 +149,19 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 			}
 			if strings.Contains(val, "no-cache") ||
 				strings.Contains(val, "no-store") {
-				cacheEnabled = false
+				t.cacheEnabled = false
 				return ar.AuthToken, nil
 			}
 		}
 	}
 
 	// Cache the token
-	cachedToken = ar.AuthToken
+	t.token = ar.AuthToken
 
 	// Set expiration
-	cachedTokenExpiresAt = time.Now().UTC().Add(time.Second * time.Duration(ccExpSec))
+	t.tokenExpiresAt = time.Now().UTC().Add(time.Second * time.Duration(ccExpSec))
 
-	return cachedToken, nil
+	return t.token, nil
 }
 
 func getClient(serviceURL string) *client {
