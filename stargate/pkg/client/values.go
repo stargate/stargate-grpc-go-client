@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/google/uuid"
@@ -276,4 +277,235 @@ func translateBasicType(value *pb.Value, spec *pb.TypeSpec) (interface{}, error)
 	}
 
 	return nil, errors.New("unsupported type")
+}
+
+// StargateTypeSpec represents a type specification for a Stargate CQL data
+// type.
+type StargateTypeSpec interface {
+	ToProto() *pb.TypeSpec
+}
+
+func scanTypeSpec(ts pb.TypeSpec_Basic) (StargateTypeSpec, error) {
+	switch ts {
+	case pb.TypeSpec_INT:
+		return &IntType{}, nil
+	case pb.TypeSpec_TEXT:
+		return &TextType{}, nil
+	}
+	return nil, fmt.Errorf("unknown type spec: %v", ts)
+}
+
+// IntType is a StargateTypeSpec for an integer data type.
+type IntType struct{}
+
+// ToProto converts the IntType to a Stargate gRPC integer type spec.
+func (t *IntType) ToProto() *pb.TypeSpec {
+	return &pb.TypeSpec{Spec: &pb.TypeSpec_Basic_{Basic: pb.TypeSpec_INT}}
+}
+
+// TextType is a StargateTypeSpec for a text data type.
+type TextType struct{}
+
+// ToProto converts the TextType to a Stargate gRPC text type spec.
+func (t *TextType) ToProto() *pb.TypeSpec {
+	return &pb.TypeSpec{Spec: &pb.TypeSpec_Basic_{Basic: pb.TypeSpec_TEXT}}
+}
+
+// StargateColumnSpec represents the specification for a column in a Stargate
+// table.
+type StargateColumnSpec interface {
+	ToProto() *pb.ColumnSpec
+}
+
+func scanColumnProto(c *pb.ColumnSpec) (StargateColumnSpec, error) {
+	t := c.Type
+	switch t.Spec.(type) {
+	case *pb.TypeSpec_Basic_:
+		ts, err := scanTypeSpec(t.GetBasic())
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan basic type: %v", err)
+		}
+		return &BasicColumn{Name: c.Name, Type: ts}, nil
+		// TODO: handle maps and lists
+	}
+	return nil, fmt.Errorf("unsupported column type: %v", t)
+}
+
+// BasicColumn is a StargateColumnSpec for a basic column with a standard type.
+type BasicColumn struct {
+	// Name is the name of the column.
+	Name string
+	// Type is the CQL data type of the column.
+	Type StargateTypeSpec
+}
+
+// ToProto converts the BasicColumn to a Stargate gRPC column spec.
+func (c *BasicColumn) ToProto() *pb.ColumnSpec {
+	return &pb.ColumnSpec{
+		Type: c.Type.ToProto(),
+		Name: c.Name,
+	}
+}
+
+// StargateValue represents a value in a Stargate table conforming to a standard
+// CQL data type.
+type StargateValue interface {
+	ToProto() *pb.Value
+}
+
+// CassandraType is a type constraint for types that can translate to a CQL
+// data type.
+type CassandraType interface {
+	string | // ASCII, TEXT, VARCHAR
+		int64 // BIGINT, COUNTER, INT, SMALLINT, TINYINT, VARINT
+}
+
+// Value represents a basic value in a Stargate table.
+type Value[T CassandraType] struct {
+	value T
+}
+
+// NewValue creates a new basic value of the inferred type.
+func NewValue[T CassandraType](value T) *Value[T] {
+	return &Value[T]{value}
+}
+
+// ToProto converts the Value to a Stargate gRPC proto value.
+func (v Value[T]) ToProto() *pb.Value {
+	return valueToProto(v.value)
+}
+
+// TODO: add collection support
+
+func valueToProto(value interface{}) *pb.Value {
+	switch value.(type) {
+	case string:
+		return &pb.Value{Inner: &pb.Value_String_{String_: value.(string)}}
+	case int64:
+		return &pb.Value{Inner: &pb.Value_Int{Int: value.(int64)}}
+	}
+	return &pb.Value{Inner: &pb.Value_Null_{Null: &pb.Value_Null{}}}
+}
+
+func scanBasic(v *pb.Value) (StargateValue, error) {
+	switch v.Inner.(type) {
+	case *pb.Value_Int:
+		return NewValue(v.GetInt()), nil
+	case *pb.Value_String_:
+		return NewValue(v.GetString_()), nil
+		// TODO: handle other values, maps and lists
+	}
+	return nil, fmt.Errorf("unsupported value type: %T, value: %+v", v.Inner, v.Inner)
+}
+
+// Row represents a row in a Stargate table returned from a query in a
+// StargateResponse.
+type Row []StargateValue
+
+func scanRowProto(r *pb.Row, colSpec []StargateColumnSpec) (Row, error) {
+	vs := r.Values
+	res := make([]StargateValue, len(vs))
+	for i, v := range vs {
+		var sv StargateValue
+		var err error
+		spec := colSpec[i]
+		switch spec.(type) {
+		case *BasicColumn:
+			sv, err = scanBasic(v)
+			// TODO: scan maps and lists
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row value: %d:%v, error: %w", i, v, err)
+		}
+		res[i] = sv
+	}
+	return res, nil
+}
+
+// ToProto converts the Row to a Stargate gRPC row.
+func (r *Row) ToProto() *pb.Row {
+	row := &pb.Row{
+		Values: make([]*pb.Value, len(*r)),
+	}
+	for i, cell := range *r {
+		row.Values[i] = cell.ToProto()
+	}
+	return row
+}
+
+// StargateTableData represents a result from a Stargate query returned in a
+// StargateResponse.
+type StargateTableData struct {
+	Columns []StargateColumnSpec
+	Rows    []Row
+
+	colIndex map[string]int
+}
+
+// ToProto converts the StargateTableData to a Stargate gRPC result.
+func (d *StargateTableData) ToProto() *pb.ResultSet {
+	res := &pb.ResultSet{
+		Columns: make([]*pb.ColumnSpec, len(d.Columns)),
+		Rows:    make([]*pb.Row, len(d.Rows)),
+	}
+	for i, col := range d.Columns {
+		res.Columns[i] = col.ToProto()
+	}
+	for i, row := range d.Rows {
+		res.Rows[i] = row.ToProto()
+	}
+	return res
+}
+
+// ValueReader creates a function that can read a .
+func ValueReader[T CassandraType](
+	result *StargateTableData,
+	colName string,
+) (func(row Row) T, error) {
+	i, ok := result.colIndex[colName]
+	if !ok {
+		return nil, fmt.Errorf("column not found")
+	}
+	s := result.Columns[i]
+	// TODO: validate type against type in column spec
+	switch s.(type) {
+	case *BasicColumn:
+		return func(row Row) T {
+			return row[i].(*Value[T]).value
+		}, nil
+	}
+	return nil, fmt.Errorf("unknown column spec for reader: %+v", s)
+}
+
+// ScanResponseProto exctracts the result.
+func ScanResponseProto(r *pb.Response) (*StargateTableData, error) {
+	rs := r.GetResultSet()
+	if rs == nil {
+		return nil, fmt.Errorf("no result set in response")
+	}
+
+	cols := rs.Columns
+	rows := rs.Rows
+	res := &StargateTableData{
+		Columns:  make([]StargateColumnSpec, len(cols)),
+		Rows:     make([]Row, len(rows)),
+		colIndex: make(map[string]int, len(cols)),
+	}
+	for i, col := range cols {
+		c, err := scanColumnProto(col)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan column: %d:%v, error: %w", i, col, err)
+		}
+		res.colIndex[col.Name] = i
+		res.Columns[i] = c
+	}
+	for i, row := range rows {
+		nr, err := scanRowProto(row, res.Columns)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %d:%v, error: %w", i, row, err)
+		}
+		res.Rows[i] = nr
+	}
+
+	return res, nil
 }
