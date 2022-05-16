@@ -191,27 +191,53 @@ if err != nil {
 }
 
 // Read the data back out
-response, err := stargateClient.ExecuteQuery(&pb.Query{
+res, err := stargateClient.ExecuteQuery(&pb.Query{
     Cql: "SELECT key, value FROM ks1.tbl2",
 })
 if err != nil {
     return err
 }
 
-result := response.GetResultSet()
+// Convert the returned rows into a scannable data table.
+d := ScanResponseProto(res)
 
-// We're calling ToString() here because we know the type being returned. If this was
-// something like a UUID we would use ToUUID().
-key, err := ToString(result.Rows[0].Values[0])
+// Create functions to read native values from table rows.
+keyReader, err := ValueReader[string](d, "key")
+if err != nil {
+    return fmt.Errorf("failed to create reader for key: %w", err)
+}
+valueReader, err := ValueReader[string](d, "value")
+if err != nil {
+    return fmt.Errorf("failed to create reader for value: %w", err)
+}
+
+// Iterate over the rows and print their values.
+for _, r := range d.Rows {
+    k := keyReader(r)
+    v := valueReader(r)
+    fmt.Printf("key = %v, value = %v\n", k, v)
+}
+
+// Output:
+// key = a, value = alpha
+```
+
+You can also use a more targeted function to read a specific value directly from
+the result set:
+```go
+key, err := ToString(res.Rows[0].Values[0])
 if err != nil {
     return err
 }
 
 fmt.Printf("key = %s\n", key)
-```
 
-Notice that in the above the `ToString` function is used to transform the value into a native string. Additional functions
-also exist for other types such as `int`, `map`, and `blob`. The full list can be found in [values.go](stargate/pkg/client/values.go).
+// Output:
+// key = a
+```
+Additional functions also exist for other types such as `int`, `map`, and
+`blob`. The full list can be found in
+[values.go](stargate/pkg/client/values.go).
 
 ## Issue Management
 
