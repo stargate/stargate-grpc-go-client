@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package client
@@ -584,6 +585,25 @@ func TestExecuteQuery_UsingStaticToken(t *testing.T) {
 
 	var pagingState []byte
 	assert.Equal(t, pagingState, result.PagingState.GetValue())
+}
+
+func TestTimeoutOption(t *testing.T) {
+	conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(
+			auth.NewTableBasedTokenProviderUnsafe(
+				fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
+			),
+		),
+	)
+	require.NoError(t, err)
+
+	s, err := NewStargateClientWithConn(conn)
+	require.NoError(t, err)
+	assert.Equal(t, defaultTimeout, s.timeout)
+
+	s, err = NewStargateClientWithConn(conn, WithTimeout(time.Second*2))
+	require.NoError(t, err)
+	assert.Equal(t, time.Second*2, s.timeout)
 }
 
 func createClient(t *testing.T) *StargateClient {
