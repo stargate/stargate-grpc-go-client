@@ -28,7 +28,7 @@ docker run --name stargate \
   -e CLUSTER_NAME=stargate \
   -e CLUSTER_VERSION=3.11 \
   -e DEVELOPER_MODE=true \
-  stargateio/stargate-3_11:v1.0.35
+  stargateio/stargate-3_11:v1.0.61
 ```
 
 Ensure the local instance of Stargate is running properly by tailing the logs for the container with `docker logs -f stargate`.
@@ -48,10 +48,13 @@ package main
 import (
     "fmt"
     "os"
+    "log"
+    "context"
 
     "github.com/stargate/stargate-grpc-go-client/stargate/pkg/auth"
     "github.com/stargate/stargate-grpc-go-client/stargate/pkg/client"
     "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
 )
 
 var stargateClient *client.StargateClient
@@ -60,7 +63,11 @@ func main() {
     grpcEndpoint := "localhost:8090"
     authEndpoint := "localhost:8081"
 
-    conn, err := grpc.Dial(grpcEndpoint, grpc.WithInsecure(), grpc.WithBlock(),
+    // Create a context to add a timeout to the gRPC dial
+    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+    defer cancel()
+
+    conn, err := grpc.DialContext(ctx, grpcEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(),
       grpc.WithPerRPCCredentials(
         auth.NewTableBasedTokenProviderUnsafe(
           fmt.Sprintf("http://%s/v1/auth", authEndpoint), "cassandra", "cassandra",
@@ -68,14 +75,12 @@ func main() {
       ),
     )
     if err != nil {
-        fmt.Printf("error dialing connection %v", err)
-        os.Exit(1)
+        log.Fatalf("error dialing connection %v", err)
     }
 
     stargateClient, err = client.NewStargateClientWithConn(conn)
     if err != nil {
-        fmt.Printf("error creating client %v", err)
-        os.Exit(1)
+        log.Fatalf("error creating client %v", err)
     }
 }
 ```
@@ -84,7 +89,7 @@ In a secure environment you'll dial the connection like this:
 
 ```go
 config := &tls.Config{}
-conn, err := grpc.Dial(grpcEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(config)), 
+conn, err := grpc.DialContext(ctx, grpcEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(config)), 
     grpc.WithBlock(),
     grpc.WithPerRPCCredentials(
         auth.NewTableBasedTokenProvider(
@@ -93,6 +98,8 @@ conn, err := grpc.Dial(grpcEndpoint, grpc.WithTransportCredentials(credentials.N
     ),
 )
 ```
+
+
 
 ### Querying
 
@@ -174,6 +181,23 @@ batch := &pb.Batch{
 }
 
 response, err := stargateClient.ExecuteBatch(batch)
+```
+
+#### Query Timeouts
+
+By default, all queries will time out after 10 seconds. You can customize this behavior at a per-query level using the `ExecuteQueryWithContext` and `ExecuteBatchWithContext` functions:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+response, err := stargateClient.ExecuteQueryWithContext(query, ctx)
+```
+
+You can also set a per-call timeout once when constructing the client:
+
+```go
+stargateClient, err := client.NewStargateClientWithConn(conn, client.WithTimeout(3*time.Second))
 ```
 
 ### Processing the result set
