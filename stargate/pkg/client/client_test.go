@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package client
@@ -7,7 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"os"
@@ -646,7 +647,7 @@ func getAuthToken() (string, error) {
 		}
 	}()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading response body: %v", err)
 	}

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -102,7 +102,7 @@ func (t tableBasedTokenProvider) getToken(ctx context.Context) (string, error) {
 		}
 	}()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Errorf("error reading response body: %v", err)
 		return "", fmt.Errorf("error reading response body: %v", err)
